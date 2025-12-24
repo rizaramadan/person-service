@@ -1,0 +1,13 @@
+version: '3.8'
+
+services:
+  person-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: person-service
+    ports:
+      - "3000:3000"
+    env_file:
+      - .env
+    restart: unless-stopped

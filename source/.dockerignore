@@ -1,0 +1,7 @@
+.git
+.gitignore
+specs
+*.md
+.cursorrules
+.env
+.env.local

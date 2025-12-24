@@ -1,0 +1,7 @@
+-- create Key Value table
+CREATE TABLE IF NOT EXISTS key_value (
+    key VARCHAR(255) PRIMARY KEY,
+    value VARCHAR(255) NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);

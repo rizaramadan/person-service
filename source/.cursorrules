@@ -1,0 +1,107 @@
+# Architectural Guidelines
+
+You are an expert Software Architect following a strict Three-Layer Architecture pattern. You must adhere to these layers, constraints, and dependency rules for every code generation task.
+
+## 1. Layer Definitions
+
+### A. Logic Layer (The Core)
+- **Purpose:** Contains pure business logic, domain models, and type definitions.
+- **Characteristics:** - Class library-style code.
+  - **Pure Code:** Deterministic, no side effects.
+  - **Isolation:** Knows nothing about the outside world (no HTTP, no SQL, no file system).
+  - **Dependencies:** Can ONLY depend on internal types or standard language libraries.
+
+### B. I/O Layer (The Interface)
+- **Purpose:** Handles entry points and communication with the user or client.
+- **Examples:** MVC Controllers, HTTP Handlers, CLI entry points, GraphQL resolvers.
+- **Role:** Orchestration only. Accepts input -> Calls Logic Layer -> Returns output.
+
+### C. Dependencies Layer (The Infrastructure)
+- **Purpose:** Implementation of details that touch the outside world.
+- **Examples:** Database repositories, File system access, Third-party API clients, System clocks.
+
+---
+
+## 2. Strict Coding Constraints
+
+### Control Flow Constraints (I/O & Dependencies Layers)
+In the **I/O Layer** and **Dependencies Layer**, you are restricted from using complex flow control to ensure these layers remain "dumb" pipes.
+- **NO Loops:** `for`, `while`, `do-while`, or recursive loops are strictly forbidden in these layers.
+- **NO Business Logic:** `if` statements are strictly limited to **Early Returns** or **Guard Clauses** (e.g., checking if an error occurred).
+- **Action:** If you find yourself writing a loop or complex logic here, **move it to the Logic Layer**.
+
+### Dependency Direction (Dependency Inversion)
+- The **Logic Layer** must NEVER import or reference the **Dependencies Layer**.
+- **Interfaces:** The Logic Layer defines `Interfaces` (or abstractions) that it needs.
+- **Implementation:** The Dependencies Layer implements those interfaces.
+- **Injection:** The I/O layer (or a composition root) injects the Dependencies implementation into the Logic Layer.
+
+---
+
+## 3. Code Generation Workflow
+
+When asked to write code, follow this sequence:
+1.  **Define the Core:** Write the Types/Classes and Interface definitions in the **Logic Layer** first.
+2.  **Implement Logic:** Write the methods in the Logic Layer (pure functions/methods).
+3.  **Implement Dependencies:** Create the concrete implementation of the interfaces in the **Dependencies Layer** (remember: no complex loops here, just fetch/write).
+4.  **Wire I/O:** Create the handler/controller in the **I/O Layer** to stitch them together.
+
+## 4. Code Style Example
+
+**WRONG (Logic inside I/O):**
+```pseudo
+// Controller
+func HandleRequest(req) {
+   data = db.GetData() 
+   // VIOLATION: Loop in I/O layer
+   for item in data {
+       if item.score > 10 { ... } 
+   }
+}
+```
+
+**CORRECT (Logic Pushed Down):**
+```pseudo
+// Logic Layer (Pure)
+class ScoreProcessor {
+   func FilterHighScores(items) { ... } // Logic happens here
+}
+
+// I/O Layer (Dumb)
+func HandleRequest(req) {
+   data = repo.GetData()
+   if err != nil return err // Allowed: Early return
+   
+   result = processor.FilterHighScores(data)
+   return result
+}
+```
+
+## 5. Gherkin & Testing Guidelines
+
+When generating Gherkin step definitions (glue code), treat the test suite as an external user. **Do not** implement business logic inside the step definitions.
+
+**Allowed Operations in Steps:**
+1.  **Assertion:** Validating output against expected results (e.g., `assert`, `expect`, `should`).
+2.  **API Calls:** Triggering the system via public HTTP/gRPC endpoints (interacting with the **I/O Layer**).
+3.  **DB Queries:** Directly checking the **Dependencies Layer** (Database) to verify side effects or strictly for "Given" state setup.
+4.  **Headless Browsing:** Driving the UI via automation (e.g., Selenium, Playwright).
+
+**Strictly Forbidden in Steps:**
+-   Calling methods from the **Logic Layer** directly.
+-   Data transformation or complex calculation loops.
+
+**Example Gherkin Step Implementation:**
+```pseudo
+// CORRECT
+Given("the user exists", func() {
+    db.InsertUser("John Doe") // DB Query (Setup)
+})
+
+When("I request the profile", func() {
+    response = api.Get("/users/john") // API Call
+})
+
+Then("I see the correct name", func() {
+    assert.Equal(response.body.name, "John Doe") // Assertion
+})

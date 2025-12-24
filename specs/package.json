@@ -1,0 +1,26 @@
+{
+  "name": "person-service-integration-tests",
+  "version": "1.0.0",
+  "description": "Integration test suite for Person Service using Testcontainers",
+  "type": "module",
+  "scripts": {
+    "docker:build": "docker-compose -f ../source/docker-compose.yml build",
+    "pretest": "npm run docker:build",
+    "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js --runInBand",
+    "test:no-build": "node --experimental-vm-modules node_modules/jest/bin/jest.js --runInBand"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@jest/globals": "^29.7.0",
+    "@testcontainers/postgresql": "^11.10.0",
+    "jest": "^29.7.0",
+    "jest-cucumber": "^4.0.0"
+  },
+  "dependencies": {
+    "node-fetch": "^3.3.2",
+    "pg": "^8.11.3",
+    "testcontainers": "^10.7.2"
+  }
+}
