@@ -7,6 +7,7 @@
 
 import {
   sendGetRequest,
+  sendPostRequest,
   sendGetRequestWithTimeout,
   sendConcurrentGetRequests,
   parseJsonResponse,
@@ -42,6 +43,17 @@ export function assertServiceRunning(expect) {
  */
 export async function sendGet(ctx, path) {
   ctx.response = await sendGetRequest(path);
+}
+
+/**
+ * Step helper: Send POST request and store in context
+ * @param {Object} ctx - Test context
+ * @param {string} path - API endpoint path
+ * @param {Object} body - Request body
+ */
+export async function sendPost(ctx, path, body = {}) {
+  ctx.response = await sendPostRequest(path, body);
+  ctx.responseData = null; // Clear cached response data
 }
 
 /**

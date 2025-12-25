@@ -57,6 +57,27 @@ export async function sendGetRequestWithTimeout(path, timeoutMs) {
 }
 
 /**
+ * Send a POST request to the service
+ * @param {string} path - API endpoint path
+ * @param {Object} body - Request body (will be JSON stringified)
+ * @param {Object} options - Fetch options (optional)
+ * @returns {Promise<Response>} Fetch response
+ */
+export async function sendPostRequest(path, body = {}, options = {}) {
+  const serviceUrl = getServiceUrl();
+  const url = `${serviceUrl}${path}`;
+  return await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...options.headers
+    },
+    body: JSON.stringify(body),
+    ...options
+  });
+}
+
+/**
  * Send multiple concurrent GET requests
  * @param {string} path - API endpoint path
  * @param {number} count - Number of concurrent requests

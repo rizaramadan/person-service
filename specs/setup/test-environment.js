@@ -3,7 +3,6 @@ import { GenericContainer, Network, Wait } from 'testcontainers';
 import { PostgreSqlContainer } from '@testcontainers/postgresql';
 import { exec } from 'child_process';
 import { promisify } from 'util';
-import { readFileSync } from 'fs';
 import { resolve, dirname } from 'path';
 import { fileURLToPath } from 'url';
 
@@ -84,15 +83,26 @@ class TestEnvironment {
   }
 
   /**
-   * Run database migrations from schema.sql
+   * Run database migrations from schema.sql using psql command line
    */
   async _runMigrations() {
     const __filename = fileURLToPath(import.meta.url);
     const __dirname = dirname(__filename);
     const schemaPath = resolve(__dirname, '../../source/app/internal/db/schema.sql');
-    const createTableSQL = readFileSync(schemaPath, 'utf-8');
 
-    await this.dbClient.query(createTableSQL);
+    // Execute schema.sql using psql command line tool
+    const psqlCommand = `PGPASSWORD=testpass psql -h localhost -p ${this.postgresPort} -U testuser -d testdb -f "${schemaPath}"`;
+    
+    try {
+      const { stdout, stderr } = await execAsync(psqlCommand);
+      if (stdout) console.log('  Migration output:', stdout.trim());
+      if (stderr && !stderr.includes('NOTICE')) {
+        console.warn('  Migration warnings:', stderr.trim());
+      }
+    } catch (error) {
+      console.error('  Migration failed:', error.message);
+      throw error;
+    }
   }
 
   /**
@@ -221,12 +231,6 @@ class TestEnvironment {
    */
   async cleanupDatabase() {
     if (!this.dbClient) return;
-
-    try {
-      await this.dbClient.query('TRUNCATE TABLE users RESTART IDENTITY;');
-    } catch (error) {
-      console.warn('Warning: Failed to truncate users table:', error.message);
-    }
   }
 
   /**
