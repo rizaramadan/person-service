@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	health "person-service/healthcheck"
+	key_value "person-service/key_value"
 	"strconv"
 	"strings"
 	"time"
@@ -17,143 +18,6 @@ import (
 
 	db "person-service/internal/db/generated"
 )
-
-// ============================================================================
-// I/O LAYER - HTTP Handlers using Echo Framework
-// ============================================================================
-
-// SetValueRequest represents the request body for setting a key-value pair
-type SetValueRequest struct {
-	Key   string `json:"key" validate:"required"`
-	Value string `json:"value" validate:"required"`
-}
-
-// SetValueHandler handles POST /api/key_value - sets or updates a key-value pair
-func SetValueHandler(queries *db.Queries) echo.HandlerFunc {
-	return func(c echo.Context) error {
-		// Parse request body
-		var req SetValueRequest
-		if err := c.Bind(&req); err != nil {
-			return c.JSON(http.StatusBadRequest, map[string]interface{}{
-				"error": "Invalid request body",
-			})
-		}
-
-		// Validate required fields
-		if req.Key == "" || req.Value == "" {
-			return c.JSON(http.StatusBadRequest, map[string]interface{}{
-				"error": "Key and value are required",
-			})
-		}
-
-		// Set value in database
-		ctx := context.Background()
-		err := queries.SetValue(ctx, db.SetValueParams{
-			Key:   req.Key,
-			Value: req.Value,
-		})
-
-		if err != nil {
-			return c.JSON(http.StatusInternalServerError, map[string]interface{}{
-				"error": "Failed to set value",
-			})
-		}
-
-		// Retrieve the full record with timestamps
-		record, err := queries.GetKeyValue(ctx, req.Key)
-		if err != nil {
-			return c.JSON(http.StatusInternalServerError, map[string]interface{}{
-				"error": "Failed to retrieve value",
-			})
-		}
-
-		// Return success with the full key-value record
-		response := map[string]interface{}{
-			"key":   record.Key,
-			"value": record.Value,
-		}
-
-		// Add timestamps if they are valid
-		if record.CreatedAt.Valid {
-			response["created_at"] = record.CreatedAt.Time
-		}
-		if record.UpdatedAt.Valid {
-			response["updated_at"] = record.UpdatedAt.Time
-		}
-
-		return c.JSON(http.StatusOK, response)
-	}
-}
-
-// GetValueHandler handles GET /api/key_value/:key - retrieves a value by key
-func GetValueHandler(queries *db.Queries) echo.HandlerFunc {
-	return func(c echo.Context) error {
-		key := c.Param("key")
-		if key == "" {
-			return c.JSON(http.StatusBadRequest, map[string]interface{}{
-				"error": "Key parameter is required",
-			})
-		}
-
-		// Get full record from database
-		ctx := context.Background()
-		record, err := queries.GetKeyValue(ctx, key)
-
-		if err != nil {
-			if err == sql.ErrNoRows {
-				return c.JSON(http.StatusNotFound, map[string]interface{}{
-					"error": "Key not found",
-				})
-			}
-			return c.JSON(http.StatusInternalServerError, map[string]interface{}{
-				"error": "Failed to retrieve value",
-			})
-		}
-
-		// Return the full key-value record
-		response := map[string]interface{}{
-			"key":   record.Key,
-			"value": record.Value,
-		}
-
-		// Add timestamps if they are valid
-		if record.CreatedAt.Valid {
-			response["created_at"] = record.CreatedAt.Time
-		}
-		if record.UpdatedAt.Valid {
-			response["updated_at"] = record.UpdatedAt.Time
-		}
-
-		return c.JSON(http.StatusOK, response)
-	}
-}
-
-// DeleteValueHandler handles DELETE /api/key_value/:key - deletes a key-value pair
-func DeleteValueHandler(queries *db.Queries) echo.HandlerFunc {
-	return func(c echo.Context) error {
-		key := c.Param("key")
-		if key == "" {
-			return c.JSON(http.StatusBadRequest, map[string]interface{}{
-				"error": "Key parameter is required",
-			})
-		}
-
-		// Delete value from database
-		ctx := context.Background()
-		err := queries.DeleteValue(ctx, key)
-
-		if err != nil {
-			return c.JSON(http.StatusInternalServerError, map[string]interface{}{
-				"error": "Failed to delete value",
-			})
-		}
-
-		// Return success message
-		return c.JSON(http.StatusOK, map[string]interface{}{
-			"message": "Key deleted successfully",
-		})
-	}
-}
 
 // ============================================================================
 // MAIN - Application Entry Point
@@ -236,15 +100,16 @@ func main() {
 	e.HideBanner = true
 	e.HidePort = true
 
-	healthService := health.NewHealthCheckHandler(queries)
+	healthHandler := health.NewHealthCheckHandler(queries)
+	keyValueHandler := key_value.NewKeyValueHandler(queries)
 
 	// Setup routes
-	e.GET("/health", healthService.Check)
+	e.GET("/health", healthHandler.Check)
 
 	// Key-value API routes
-	e.POST("/api/key-value", SetValueHandler(queries))
-	e.GET("/api/key-value/:key", GetValueHandler(queries))
-	e.DELETE("/api/key-value/:key", DeleteValueHandler(queries))
+	e.POST("/api/key-value", keyValueHandler.SetValue)
+	e.GET("/api/key-value/:key", keyValueHandler.GetValue)
+	e.DELETE("/api/key-value/:key", keyValueHandler.DeleteValue)
 
 	// Configure server
 	e.Server = &http.Server{
