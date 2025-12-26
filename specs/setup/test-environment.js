@@ -110,9 +110,26 @@ class TestEnvironment {
    */
   async _startService() {
     const servicePort = 3000;
-    // Use the network alias hostname for internal container-to-container communication
-    const dbHost = 'postgres-db';
-    const dbPort = 5432; // PostgreSQL always listens on 5432 inside its container
+    
+    // Workaround for environments without iptables: use host.docker.internal or gateway IP
+    // Get the Docker bridge gateway IP to access host services
+    let dbHost = 'host.docker.internal';  // Works on Docker Desktop
+    let dbPort = this.postgresPort;        // Use the mapped host port
+    
+    // For Linux, we need to use the gateway IP instead
+    try {
+      const { stdout } = await execAsync(
+        `docker network inspect ${this.network.getId()} -f '{{range .IPAM.Config}}{{.Gateway}}{{end}}'`
+      );
+      const gatewayIp = stdout.trim();
+      if (gatewayIp && gatewayIp !== '') {
+        dbHost = gatewayIp;
+        console.log(`Using gateway IP for database: ${gatewayIp}`);
+      }
+    } catch (error) {
+      console.log('Could not detect gateway IP, using host.docker.internal');
+    }
+    
     const databaseUrl = `postgresql://testuser:testpass@${dbHost}:${dbPort}/testdb?sslmode=disable`;
 
     console.log('Starting service container...');

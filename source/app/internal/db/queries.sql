@@ -6,6 +6,10 @@ SELECT 1;
 -- Retrieve a value by key
 SELECT value FROM key_value WHERE key = $1 LIMIT 1;
 
+-- name: GetKeyValue :one
+-- Retrieve the full key-value record by key
+SELECT key, value, created_at, updated_at FROM key_value WHERE key = $1 LIMIT 1;
+
 -- name: SetValue :exec
 -- Set a value by key
 INSERT INTO key_value (key, value) VALUES ($1, $2)

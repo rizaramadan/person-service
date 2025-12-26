@@ -3,10 +3,14 @@ package main
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"log"
 	"net/http"
 	"os"
+	health "person-service/healthcheck"
+	key_value "person-service/key_value"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/labstack/echo/v4"
@@ -16,43 +20,22 @@ import (
 )
 
 // ============================================================================
-// I/O LAYER - HTTP Handlers using Echo Framework
-// ============================================================================
-
-// HealthHandler handles HTTP requests for the /health endpoint
-// This is the I/O Layer that directly calls HealthCheck
-func HealthHandler(queries *db.Queries) echo.HandlerFunc {
-	return func(c echo.Context) error {
-		// Call HealthCheck directly
-		err := queries.HealthCheck(context.Background())
-		if err != nil {
-			return c.JSON(http.StatusInternalServerError, map[string]interface{}{
-				"status": "unhealthy",
-				"error":  err.Error(),
-			})
-		}
-
-		// Return healthy status
-		return c.JSON(http.StatusOK, map[string]interface{}{
-			"status": "healthy",
-		})
-	}
-}
-
-// ============================================================================
 // MAIN - Application Entry Point
 // ============================================================================
 
-func main() {
-	// Load configuration from environment variables
-	port := os.Getenv("PORT")
-	if port == "" {
-		port = "3000"
-	}
-
+func setupDb(port string) *db.Queries {
 	databaseURL := os.Getenv("DATABASE_URL")
 	if databaseURL == "" {
 		log.Fatalln("ERROR: DATABASE_URL environment variable is not set")
+	}
+
+	// Add connection timeout parameters if not present
+	if !strings.Contains(databaseURL, "connect_timeout") {
+		separator := "?"
+		if strings.Contains(databaseURL, "?") {
+			separator = "&"
+		}
+		databaseURL = databaseURL + separator + "connect_timeout=10"
 	}
 
 	// Validate port
@@ -60,26 +43,73 @@ func main() {
 		log.Fatalf("ERROR: Invalid PORT value: %s\n", err)
 	}
 
+	fmt.Fprintf(os.Stdout, "INFO: Connecting to database...\n")
+
 	// Initialize database connection with SQLC queries
+	fmt.Fprintf(os.Stdout, "DEBUG: Opening database connection...\n")
 	database, err := sql.Open("postgres", databaseURL)
 	if err != nil {
 		log.Fatalf("ERROR: Failed to open database: %v\n", err)
 	}
-	defer database.Close()
+	// Note: database.Close() should be called in main() shutdown, not here
 
-	if err := database.Ping(); err != nil {
+	fmt.Fprintf(os.Stdout, "DEBUG: Setting connection pool parameters...\n")
+	// Set connection timeouts
+	database.SetMaxOpenConns(25)
+	database.SetMaxIdleConns(5)
+	database.SetConnMaxLifetime(5 * time.Minute)
+
+	fmt.Fprintf(os.Stdout, "DEBUG: Pinging database...\n")
+	// Ping database with timeout
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	if err := database.PingContext(ctx); err != nil {
+		fmt.Fprintf(os.Stderr, "ERROR: Database ping failed: %v\n", err)
 		log.Fatalf("ERROR: Failed to ping database: %v\n", err)
 	}
 
+	fmt.Fprintf(os.Stdout, "DEBUG: Database ping successful!\n")
+
 	queries := db.New(database)
+	return queries
+}
+
+func main() {
+	// Ensure logs are written immediately (unbuffered)
+	log.SetFlags(log.LstdFlags)
+
+	_, err := fmt.Fprintf(os.Stdout, "INFO: Application starting...\n")
+	if err != nil {
+		log.Fatalf("ERROR: Failed to start application: %v\n", err)
+	}
+
+	// Load configuration from environment variables
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "3000"
+	}
+
+	queries := setupDb(port)
 
 	log.Println("INFO: Database connection successful")
+	fmt.Fprintf(os.Stdout, "INFO: Database connection successful\n")
 
 	// Create and setup Echo server
 	e := echo.New()
+	e.HideBanner = true
+	e.HidePort = true
+
+	healthHandler := health.NewHealthCheckHandler(queries)
+	keyValueHandler := key_value.NewKeyValueHandler(queries)
 
 	// Setup routes
-	e.GET("/health", HealthHandler(queries))
+	e.GET("/health", healthHandler.Check)
+
+	// Key-value API routes
+	e.POST("/api/key-value", keyValueHandler.SetValue)
+	e.GET("/api/key-value/:key", keyValueHandler.GetValue)
+	e.DELETE("/api/key-value/:key", keyValueHandler.DeleteValue)
 
 	// Configure server
 	e.Server = &http.Server{
@@ -89,13 +119,24 @@ func main() {
 		IdleTimeout:  60 * time.Second,
 	}
 
-	// Channel to listen for interrupt signals
+	// Log before starting server
+	log.Printf("INFO: Server starting on port %s\n", port)
+	fmt.Fprintf(os.Stdout, "INFO: Server starting on port %s\n", port)
+	fmt.Fprintf(os.Stderr, "INFO: Server starting on port %s\n", port)
+
+	// Start server in goroutine
 	go func() {
-		log.Printf("INFO: Server starting on port %s\n", port)
 		if err := e.Start(e.Server.Addr); err != nil && err != http.ErrServerClosed {
 			log.Printf("ERROR: Server error: %v\n", err)
 		}
 	}()
+
+	// Give server time to start
+	time.Sleep(100 * time.Millisecond)
+
+	log.Printf("INFO: Server ready and listening on port %s\n", port)
+	fmt.Fprintf(os.Stdout, "INFO: Server ready on port %s\n", port)
+	fmt.Fprintf(os.Stderr, "INFO: Server ready on port %s\n", port)
 
 	// Graceful shutdown
 	// This is a simplified version. For production, use a signal handler.
