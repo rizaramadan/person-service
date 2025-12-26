@@ -51,7 +51,7 @@ func setupDb(port string) *db.Queries {
 	if err != nil {
 		log.Fatalf("ERROR: Failed to open database: %v\n", err)
 	}
-	defer database.Close()
+	// Note: database.Close() should be called in main() shutdown, not here
 
 	fmt.Fprintf(os.Stdout, "DEBUG: Setting connection pool parameters...\n")
 	// Set connection timeouts
