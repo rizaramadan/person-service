@@ -26,7 +26,7 @@ describe.skip('Key-Value Service Integration Tests', () => {
     await global.__TEST_ENV__.cleanupDatabase();
   });
 
-  describe('POST /api/keyvalue - SetValue', () => {
+  describe('POST /api/key_value - SetValue', () => {
     it('should set a key-value pair successfully', async () => {
       // When: POST request to set a key-value pair
       const response = await fetch(`${serviceUrl}/api/keyvalue`, {
@@ -92,7 +92,7 @@ describe.skip('Key-Value Service Integration Tests', () => {
     });
   });
 
-  describe('GET /api/keyvalue/:key - GetValue', () => {
+  describe('GET /api/key_value/:key - GetValue', () => {
     it('should retrieve a value by key', async () => {
       // Given: A key-value pair exists in the database
       await dbClient.query(
@@ -150,7 +150,7 @@ describe.skip('Key-Value Service Integration Tests', () => {
     });
   });
 
-  describe('DELETE /api/keyvalue/:key - DeleteValue', () => {
+  describe('DELETE /api/key_value/:key - DeleteValue', () => {
     it('should delete a key-value pair successfully', async () => {
       // Given: A key-value pair exists in the database
       await dbClient.query(

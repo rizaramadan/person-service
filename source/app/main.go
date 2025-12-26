@@ -7,6 +7,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	health "person-service/healthcheck"
 	"strconv"
 	"strings"
 	"time"
@@ -21,33 +22,13 @@ import (
 // I/O LAYER - HTTP Handlers using Echo Framework
 // ============================================================================
 
-// HealthHandler handles HTTP requests for the /health endpoint
-// This is the I/O Layer that directly calls HealthCheck
-func HealthHandler(queries *db.Queries) echo.HandlerFunc {
-	return func(c echo.Context) error {
-		// Call HealthCheck directly
-		err := queries.HealthCheck(context.Background())
-		if err != nil {
-			return c.JSON(http.StatusInternalServerError, map[string]interface{}{
-				"status": "unhealthy",
-				"error":  err.Error(),
-			})
-		}
-
-		// Return healthy status
-		return c.JSON(http.StatusOK, map[string]interface{}{
-			"status": "healthy",
-		})
-	}
-}
-
 // SetValueRequest represents the request body for setting a key-value pair
 type SetValueRequest struct {
 	Key   string `json:"key" validate:"required"`
 	Value string `json:"value" validate:"required"`
 }
 
-// SetValueHandler handles POST /api/keyvalue - sets or updates a key-value pair
+// SetValueHandler handles POST /api/key_value - sets or updates a key-value pair
 func SetValueHandler(queries *db.Queries) echo.HandlerFunc {
 	return func(c echo.Context) error {
 		// Parse request body
@@ -91,7 +72,7 @@ func SetValueHandler(queries *db.Queries) echo.HandlerFunc {
 			"key":   record.Key,
 			"value": record.Value,
 		}
-		
+
 		// Add timestamps if they are valid
 		if record.CreatedAt.Valid {
 			response["created_at"] = record.CreatedAt.Time
@@ -99,12 +80,12 @@ func SetValueHandler(queries *db.Queries) echo.HandlerFunc {
 		if record.UpdatedAt.Valid {
 			response["updated_at"] = record.UpdatedAt.Time
 		}
-		
+
 		return c.JSON(http.StatusOK, response)
 	}
 }
 
-// GetValueHandler handles GET /api/keyvalue/:key - retrieves a value by key
+// GetValueHandler handles GET /api/key_value/:key - retrieves a value by key
 func GetValueHandler(queries *db.Queries) echo.HandlerFunc {
 	return func(c echo.Context) error {
 		key := c.Param("key")
@@ -134,7 +115,7 @@ func GetValueHandler(queries *db.Queries) echo.HandlerFunc {
 			"key":   record.Key,
 			"value": record.Value,
 		}
-		
+
 		// Add timestamps if they are valid
 		if record.CreatedAt.Valid {
 			response["created_at"] = record.CreatedAt.Time
@@ -142,12 +123,12 @@ func GetValueHandler(queries *db.Queries) echo.HandlerFunc {
 		if record.UpdatedAt.Valid {
 			response["updated_at"] = record.UpdatedAt.Time
 		}
-		
+
 		return c.JSON(http.StatusOK, response)
 	}
 }
 
-// DeleteValueHandler handles DELETE /api/keyvalue/:key - deletes a key-value pair
+// DeleteValueHandler handles DELETE /api/key_value/:key - deletes a key-value pair
 func DeleteValueHandler(queries *db.Queries) echo.HandlerFunc {
 	return func(c echo.Context) error {
 		key := c.Param("key")
@@ -178,19 +159,7 @@ func DeleteValueHandler(queries *db.Queries) echo.HandlerFunc {
 // MAIN - Application Entry Point
 // ============================================================================
 
-func main() {
-	// Ensure logs are written immediately (unbuffered)
-	log.SetFlags(log.LstdFlags)
-	
-	fmt.Fprintf(os.Stdout, "INFO: Application starting...\n")
-	fmt.Fprintf(os.Stderr, "INFO: Application starting...\n")
-	
-	// Load configuration from environment variables
-	port := os.Getenv("PORT")
-	if port == "" {
-		port = "3000"
-	}
-
+func setupDb(port string) *db.Queries {
 	databaseURL := os.Getenv("DATABASE_URL")
 	if databaseURL == "" {
 		log.Fatalln("ERROR: DATABASE_URL environment variable is not set")
@@ -211,7 +180,6 @@ func main() {
 	}
 
 	fmt.Fprintf(os.Stdout, "INFO: Connecting to database...\n")
-	fmt.Fprintf(os.Stderr, "INFO: Connecting to database...\n")
 
 	// Initialize database connection with SQLC queries
 	fmt.Fprintf(os.Stdout, "DEBUG: Opening database connection...\n")
@@ -236,23 +204,43 @@ func main() {
 		fmt.Fprintf(os.Stderr, "ERROR: Database ping failed: %v\n", err)
 		log.Fatalf("ERROR: Failed to ping database: %v\n", err)
 	}
-	
+
 	fmt.Fprintf(os.Stdout, "DEBUG: Database ping successful!\n")
 
 	queries := db.New(database)
+	return queries
+}
+
+func main() {
+	// Ensure logs are written immediately (unbuffered)
+	log.SetFlags(log.LstdFlags)
+
+	_, err := fmt.Fprintf(os.Stdout, "INFO: Application starting...\n")
+	if err != nil {
+		log.Fatalf("ERROR: Failed to start application: %v\n", err)
+	}
+
+	// Load configuration from environment variables
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "3000"
+	}
+
+	queries := setupDb(port)
 
 	log.Println("INFO: Database connection successful")
 	fmt.Fprintf(os.Stdout, "INFO: Database connection successful\n")
-	fmt.Fprintf(os.Stderr, "INFO: Database connection successful\n")
 
 	// Create and setup Echo server
 	e := echo.New()
 	e.HideBanner = true
 	e.HidePort = true
 
+	healthService := health.NewHealthCheckHandler(queries)
+
 	// Setup routes
-	e.GET("/health", HealthHandler(queries))
-	
+	e.GET("/health", healthService.Check)
+
 	// Key-value API routes
 	e.POST("/api/key-value", SetValueHandler(queries))
 	e.GET("/api/key-value/:key", GetValueHandler(queries))
@@ -280,7 +268,7 @@ func main() {
 
 	// Give server time to start
 	time.Sleep(100 * time.Millisecond)
-	
+
 	log.Printf("INFO: Server ready and listening on port %s\n", port)
 	fmt.Fprintf(os.Stdout, "INFO: Server ready on port %s\n", port)
 	fmt.Fprintf(os.Stderr, "INFO: Server ready on port %s\n", port)
