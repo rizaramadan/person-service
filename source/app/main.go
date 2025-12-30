@@ -122,7 +122,6 @@ func main() {
 	// Log before starting server
 	log.Printf("INFO: Server starting on port %s\n", port)
 	fmt.Fprintf(os.Stdout, "INFO: Server starting on port %s\n", port)
-	fmt.Fprintf(os.Stderr, "INFO: Server starting on port %s\n", port)
 
 	// Start server in goroutine
 	go func() {
@@ -136,7 +135,6 @@ func main() {
 
 	log.Printf("INFO: Server ready and listening on port %s\n", port)
 	fmt.Fprintf(os.Stdout, "INFO: Server ready on port %s\n", port)
-	fmt.Fprintf(os.Stderr, "INFO: Server ready on port %s\n", port)
 
 	// Graceful shutdown
 	// This is a simplified version. For production, use a signal handler.
