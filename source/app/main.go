@@ -8,6 +8,7 @@ import (
 	"os"
 	health "person-service/healthcheck"
 	key_value "person-service/key_value"
+	person_attributes "person-service/person_attributes"
 	"strconv"
 	"time"
 
@@ -99,6 +100,7 @@ func main() {
 
 	healthHandler := health.NewHealthCheckHandler(queries)
 	keyValueHandler := key_value.NewKeyValueHandler(queries)
+	personAttributesHandler := person_attributes.NewPersonAttributesHandler(queries)
 
 	// Setup routes
 	e.GET("/health", healthHandler.Check)
@@ -107,6 +109,13 @@ func main() {
 	e.POST("/api/key-value", keyValueHandler.SetValue)
 	e.GET("/api/key-value/:key", keyValueHandler.GetValue)
 	e.DELETE("/api/key-value/:key", keyValueHandler.DeleteValue)
+
+	// Person attributes API routes
+	e.PUT("/persons/:personId/attributes", personAttributesHandler.CreateAttribute)
+	e.GET("/persons/:personId/attributes", personAttributesHandler.GetAllAttributes)
+	e.GET("/persons/:personId/attributes/:attributeId", personAttributesHandler.GetAttribute)
+	e.PUT("/persons/:personId/attributes/:attributeId", personAttributesHandler.UpdateAttribute)
+	e.DELETE("/persons/:personId/attributes/:attributeId", personAttributesHandler.DeleteAttribute)
 
 	// Configure server
 	e.Server = &http.Server{

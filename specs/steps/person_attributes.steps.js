@@ -34,6 +34,13 @@ const feature = loadFeature('../features/person_attributes.feature', {
  * @returns {Object} Parsed object with key-value pairs
  */
 function parseTableToObject(table) {
+  // jest-cucumber passes table data as an array of objects
+  // If table is already an object array, return the first object
+  if (table && table.length > 0 && typeof table[0] === 'object' && !Array.isArray(table[0])) {
+    return table[0];
+  }
+  
+  // Fallback to original format (2D array)
   const headers = table[0];
   const values = table[1];
   const result = {};
@@ -49,6 +56,13 @@ function parseTableToObject(table) {
  * @returns {Array} Array of objects
  */
 function parseTableToArray(table) {
+  // jest-cucumber passes table data as an array of objects
+  // If table is already an object array, return it as-is
+  if (table && table.length > 0 && typeof table[0] === 'object' && !Array.isArray(table[0])) {
+    return table;
+  }
+  
+  // Fallback to original format (2D array)
   const headers = table[0];
   const result = [];
   for (let i = 1; i < table.length; i++) {
