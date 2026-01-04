@@ -307,3 +307,36 @@ Feature: Person Attributes Management
     And the attribute "secret" should have value "this-is-sensitive-information"
     And the raw database value for attribute "secret" should not equal "this-is-sensitive-information"
 
+
+  # Audit Verification
+
+  Scenario: Verify audit log creation
+    Given a person exists with the following details:
+      | name       | clientId   |
+      | Audit User | 1818181818 |
+    When I send a POST request to "/persons/{personId}/attributes" with:
+      | key    | value     |
+      | status | audited   |
+    And the request meta contains:
+      | caller  | reason      | traceId                              |
+      | user123 | add audited | 201e8400-e29b-41d4-a716-446655440015 |
+    Then the response status should be 201
+    And an audit record should be created for traceId "201e8400-e29b-41d4-a716-446655440015"
+    And the audit record should contain caller "user123" and reason "add audited"
+
+  # Idempotency Verification
+
+  Scenario: Idempotency of request with same traceId
+    Given a person exists with the following details:
+      | name            | clientId   |
+      | Idempotent User | 1919191919 |
+    When I send a POST request to "/persons/{personId}/attributes" with:
+      | key   | value      |
+      | token | unique-123 |
+    And the request meta contains:
+      | caller  | reason    | traceId                              |
+      | user123 | add token | 211e8400-e29b-41d4-a716-446655440016 |
+    Then the response status should be 201
+    When I send the same POST request again with traceId "211e8400-e29b-41d4-a716-446655440016"
+    Then the response status should be 201
+    And the attribute should be created only once
