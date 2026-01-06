@@ -7,6 +7,10 @@ test:
 test-only:
 	cd specs && npm run test:no-build
 
+# run unit tests
+test-unit:
+	cd source/app && go test -v ./...
+
 # run tests with coverage
 test-coverage:
 	cd specs && npm run test:coverage
