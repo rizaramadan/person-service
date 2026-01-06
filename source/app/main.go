@@ -9,7 +9,9 @@ import (
 	health "person-service/healthcheck"
 	key_value "person-service/key_value"
 	person_attributes "person-service/person_attributes"
+	"os/signal"
 	"strconv"
+	"syscall"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -142,8 +144,17 @@ func main() {
 	log.Printf("INFO: Server ready and listening on port %s\n", port)
 	fmt.Fprintf(os.Stdout, "INFO: Server ready on port %s\n", port)
 
-	// Graceful shutdown
-	// This is a simplified version. For production, use a signal handler.
-	// For now, we'll let it run indefinitely.
-	select {}
+	// Wait for interrupt signal to gracefully shutdown the server with
+	// a timeout of 10 seconds.
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, os.Interrupt, syscall.SIGTERM)
+	<-quit
+
+	fmt.Fprintf(os.Stdout, "INFO: Shutting down server...\n")
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	if err := e.Shutdown(ctx); err != nil {
+		log.Fatalf("ERROR: Server shutdown failed: %v\n", err)
+	}
+	fmt.Fprintf(os.Stdout, "INFO: Server gracefully stopped\n")
 }

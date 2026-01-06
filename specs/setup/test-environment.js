@@ -92,7 +92,7 @@ class TestEnvironment {
 
     // Execute schema.sql using psql command line tool
     const psqlCommand = `PGPASSWORD=testpass psql -h localhost -p ${this.postgresPort} -U testuser -d testdb -f "${schemaPath}"`;
-    
+
     try {
       const { stdout, stderr } = await execAsync(psqlCommand);
       if (stdout) console.log('  Migration output:', stdout.trim());
@@ -110,12 +110,12 @@ class TestEnvironment {
    */
   async _startService() {
     const servicePort = 3000;
-    
+
     // Workaround for environments without iptables: use host.docker.internal or gateway IP
     // Get the Docker bridge gateway IP to access host services
     let dbHost = 'host.docker.internal';  // Works on Docker Desktop
     let dbPort = this.postgresPort;        // Use the mapped host port
-    
+
     // For Linux, we need to use the gateway IP instead
     try {
       const { stdout } = await execAsync(
@@ -129,17 +129,33 @@ class TestEnvironment {
     } catch (error) {
       console.log('Could not detect gateway IP, using host.docker.internal');
     }
-    
+
     const databaseUrl = `postgresql://testuser:testpass@${dbHost}:${dbPort}/testdb?sslmode=disable`;
+
+    const __filename = fileURLToPath(import.meta.url);
+    const __dirname = dirname(__filename);
+    const coverageDir = resolve(__dirname, '../coverage/go-data');
+
+    // Ensure coverage directory exists on host
+    await execAsync(`mkdir -p "${coverageDir}"`);
 
     console.log('Starting service container...');
     console.log(`Database connection: ${databaseUrl}`);
+    console.log(`Coverage directory: ${coverageDir}`);
 
     let startedContainer = null;
     try {
       const container = new GenericContainer('source-person-service:latest')
         .withEnvironment({ DATABASE_URL: databaseUrl })
         .withEnvironment({ ENCRYPTION_KEY_1: 'test-encryption-key-12345' })
+        .withEnvironment({ GOCOVERDIR: '/app/coverage' })
+        .withBindMounts([
+          {
+            source: coverageDir,
+            target: '/app/coverage',
+            mode: 'rw'
+          }
+        ])
         .withExposedPorts(servicePort)
         .withDefaultLogDriver()
         .withNetwork(this.network)
@@ -162,7 +178,7 @@ class TestEnvironment {
         const { stdout: containerId } = await execAsync(
           `docker ps -a --filter "ancestor=source-person-service:latest" --format "{{.ID}}" | head -1`
         );
-        
+
         if (containerId?.trim()) {
           const { stdout: logs } = await execAsync(`docker logs ${containerId.trim()} 2>&1 || true`);
           if (logs?.trim()) {
@@ -189,7 +205,7 @@ class TestEnvironment {
   async _logFailedContainer(error, databaseUrl) {
     // Try to extract container ID from error message
     let containerId = error.message?.match(/container ([a-f0-9]{64})/)?.[1];
-    
+
     // If we have a service container reference but no ID in error, try to get it directly
     if (!containerId && this.serviceContainer) {
       try {
@@ -238,8 +254,8 @@ class TestEnvironment {
     console.error('  1. Verify image exists: docker images | grep source-person-service');
     console.error(
       '  2. Test image manually: docker run --rm -e DATABASE_URL="' +
-        databaseUrl +
-        '" source-person-service:latest'
+      databaseUrl +
+      '" source-person-service:latest'
     );
     console.error('  3. Check service logs in troubleshooting steps');
   }

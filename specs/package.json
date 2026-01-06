@@ -7,7 +7,8 @@
     "docker:build": "docker-compose -f ../source/docker-compose.yml build",
     "pretest": "npm run docker:build",
     "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js --runInBand",
-    "test:no-build": "node --experimental-vm-modules node_modules/jest/bin/jest.js --runInBand"
+    "test:no-build": "node --experimental-vm-modules node_modules/jest/bin/jest.js --runInBand",
+    "test:coverage": "npm test && cd ../source/app && go tool covdata textfmt -i=../../specs/coverage/go-data -o ../../specs/coverage/coverage.out && go tool cover -html=../../specs/coverage/coverage.out -o ../../specs/coverage/report.html && echo 'Coverage report generated at coverage/report.html'"
   },
   "keywords": [],
   "author": "",

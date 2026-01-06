@@ -22,7 +22,7 @@ COPY app/ ./app/
 
 # Ensure go.sum is up to date and build the binary
 WORKDIR /build/app
-RUN go mod tidy && CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o /build/person-service .
+RUN go mod tidy && CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -cover -o /build/person-service .
 
 # Stage 2: Runtime
 FROM alpine:3.18
@@ -36,6 +36,9 @@ RUN addgroup -g 1000 appuser && \
 
 # Set working directory
 WORKDIR /app
+
+# Create coverage directory
+RUN mkdir -p /app/coverage && chown -R appuser:appuser /app/coverage
 
 # Copy binary from builder
 COPY --from=builder /build/person-service .

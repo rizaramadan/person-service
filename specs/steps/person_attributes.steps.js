@@ -11,17 +11,17 @@
 
 import { loadFeature, defineFeature } from 'jest-cucumber';
 import { expect, beforeEach } from '@jest/globals';
-import { 
-  createTestContext, 
-  assertServiceRunning, 
+import {
+  createTestContext,
+  assertServiceRunning,
   sendPost,
   sendGet,
-  assertResponseStatus 
+  assertResponseStatus
 } from './common.steps.js';
-import { 
+import {
   parseJsonResponse,
   sendPutRequest,
-  sendDeleteRequest 
+  sendDeleteRequest
 } from '../helpers/api.js';
 
 const feature = loadFeature('../features/person_attributes.feature', {
@@ -39,7 +39,7 @@ function parseTableToObject(table) {
   if (table && table.length > 0 && typeof table[0] === 'object' && !Array.isArray(table[0])) {
     return table[0];
   }
-  
+
   // Fallback to original format (2D array)
   const headers = table[0];
   const values = table[1];
@@ -61,7 +61,7 @@ function parseTableToArray(table) {
   if (table && table.length > 0 && typeof table[0] === 'object' && !Array.isArray(table[0])) {
     return table;
   }
-  
+
   // Fallback to original format (2D array)
   const headers = table[0];
   const result = [];
@@ -90,7 +90,7 @@ defineFeature(feature, (test) => {
     ctx.createdPerson = null;
     ctx.createdAttribute = null;
     ctx.meta = null;
-    
+
     // Get database client from global test environment
     if (global.__TEST_ENV__) {
       dbClient = global.__TEST_ENV__.getDbClient();
@@ -223,11 +223,11 @@ defineFeature(feature, (test) => {
       const metaData = parseTableToObject(table);
       ctx.meta = metaData;
       ctx.requestBody.meta = metaData;
-      
+
       // Send the request
       const endpoint = `/persons/${ctx.personId}/attributes`;
       ctx.response = await sendPutRequest(endpoint, ctx.requestBody);
-      
+
       if (ctx.response && (ctx.response.ok || ctx.response.status === 201)) {
         ctx.responseData = await parseJsonResponse(ctx.response);
         if (ctx.responseData && ctx.responseData.id) {
@@ -279,21 +279,21 @@ defineFeature(feature, (test) => {
     when(/^I add the following attributes to the person:$/, async (table) => {
       const attributesData = parseTableToArray(table);
       ctx.addedAttributes = [];
-      
+
       const endpoint = `/persons/${ctx.personId}/attributes`;
       const meta = {
         caller: 'test',
         reason: 'add multiple attributes',
         traceId: 'test-trace-multiple'
       };
-      
+
       for (const attrData of attributesData) {
         const requestBody = {
           key: attrData.key,
           value: attrData.value,
           meta: meta
         };
-        
+
         const response = await sendPutRequest(endpoint, requestBody);
         ctx.addedAttributes.push(response);
       }
@@ -324,7 +324,7 @@ defineFeature(feature, (test) => {
     and(/^the person has the following attributes:$/, async (table) => {
       const attributesData = parseTableToArray(table);
       ctx.createdAttributes = [];
-      
+
       for (const attrData of attributesData) {
         const attribute = await createAttribute(ctx.personId, attrData);
         ctx.createdAttributes.push(attribute);
@@ -334,7 +334,7 @@ defineFeature(feature, (test) => {
     when(/^I send a GET request to "\/persons\/\{personId\}\/attributes"$/, async () => {
       const endpoint = `/persons/${ctx.personId}/attributes`;
       await sendGet(ctx, endpoint);
-      
+
       if (ctx.response && ctx.response.ok) {
         ctx.responseData = await parseJsonResponse(ctx.response);
       }
@@ -352,9 +352,9 @@ defineFeature(feature, (test) => {
 
     and(/^the attributes should include:$/, (table) => {
       const expectedAttributes = parseTableToArray(table);
-      
+
       expectedAttributes.forEach(expected => {
-        const found = ctx.responseData.find(attr => 
+        const found = ctx.responseData.find(attr =>
           attr.key === expected.key && attr.value === expected.value
         );
         expect(found).toBeDefined();
@@ -390,10 +390,10 @@ defineFeature(feature, (test) => {
     and(/^the request meta contains:$/, async (table) => {
       const metaData = parseTableToObject(table);
       ctx.updateBody.meta = metaData;
-      
+
       const endpoint = `/persons/${ctx.personId}/attributes/${ctx.attributeId}`;
       ctx.response = await sendPutRequest(endpoint, ctx.updateBody);
-      
+
       if (ctx.response && ctx.response.ok) {
         ctx.responseData = await parseJsonResponse(ctx.response);
       }
@@ -430,7 +430,7 @@ defineFeature(feature, (test) => {
     and(/^the person has the following attributes:$/, async (table) => {
       const attributesData = parseTableToArray(table);
       ctx.createdAttributes = [];
-      
+
       for (const attrData of attributesData) {
         const attribute = await createAttribute(ctx.personId, attrData);
         ctx.createdAttributes.push(attribute);
@@ -445,11 +445,11 @@ defineFeature(feature, (test) => {
 
     and(/^the request meta contains:$/, async (table) => {
       const metaData = parseTableToObject(table);
-      
+
       const endpoint = `/persons/${ctx.personId}/attributes/${ctx.attributeId}`;
       const requestBody = { meta: metaData };
       ctx.response = await sendDeleteRequest(endpoint, requestBody);
-      
+
       if (ctx.response && ctx.response.ok) {
         try {
           ctx.responseData = await parseJsonResponse(ctx.response);
@@ -497,7 +497,7 @@ defineFeature(feature, (test) => {
     when(/^I send a GET request to "\/persons\/\{personId\}\/attributes"$/, async () => {
       const endpoint = `/persons/${ctx.personId}/attributes`;
       await sendGet(ctx, endpoint);
-      
+
       if (ctx.response && ctx.response.ok) {
         ctx.responseData = await parseJsonResponse(ctx.response);
       }
@@ -529,9 +529,9 @@ defineFeature(feature, (test) => {
     and(/^the request meta contains:$/, async (table) => {
       const metaData = parseTableToObject(table);
       ctx.requestBody.meta = metaData;
-      
+
       ctx.response = await sendPutRequest('/persons/99999/attributes', ctx.requestBody);
-      
+
       if (ctx.response && !ctx.response.ok) {
         try {
           ctx.responseData = await parseJsonResponse(ctx.response);
@@ -569,10 +569,10 @@ defineFeature(feature, (test) => {
     and(/^the request meta contains:$/, async (table) => {
       const metaData = parseTableToObject(table);
       ctx.requestBody.meta = metaData;
-      
+
       const endpoint = `/persons/${ctx.personId}/attributes`;
       ctx.response = await sendPutRequest(endpoint, ctx.requestBody);
-      
+
       if (ctx.response && !ctx.response.ok) {
         try {
           ctx.responseData = await parseJsonResponse(ctx.response);
@@ -612,10 +612,10 @@ defineFeature(feature, (test) => {
     and(/^the request meta contains:$/, async (table) => {
       const metaData = parseTableToObject(table);
       ctx.requestBody.meta = metaData;
-      
+
       const endpoint = `/persons/${ctx.personId}/attributes/99999`;
       ctx.response = await sendPutRequest(endpoint, ctx.requestBody);
-      
+
       if (ctx.response && !ctx.response.ok) {
         try {
           ctx.responseData = await parseJsonResponse(ctx.response);
@@ -653,10 +653,10 @@ defineFeature(feature, (test) => {
     and(/^the request meta contains:$/, async (table) => {
       const metaData = parseTableToObject(table);
       const requestBody = { meta: metaData };
-      
+
       const endpoint = `/persons/${ctx.personId}/attributes/99999`;
       ctx.response = await sendDeleteRequest(endpoint, requestBody);
-      
+
       if (ctx.response && !ctx.response.ok) {
         try {
           ctx.responseData = await parseJsonResponse(ctx.response);
@@ -683,7 +683,7 @@ defineFeature(feature, (test) => {
 
     when(/^I send a GET request to "\/persons\/99999\/attributes"$/, async () => {
       await sendGet(ctx, '/persons/99999/attributes');
-      
+
       if (ctx.response && !ctx.response.ok) {
         try {
           ctx.responseData = await parseJsonResponse(ctx.response);
@@ -721,10 +721,10 @@ defineFeature(feature, (test) => {
         value: attributeData.value
         // Intentionally omitting meta
       };
-      
+
       const endpoint = `/persons/${ctx.personId}/attributes`;
       ctx.response = await sendPutRequest(endpoint, requestBody);
-      
+
       if (ctx.response && !ctx.response.ok) {
         try {
           ctx.responseData = await parseJsonResponse(ctx.response);
@@ -772,10 +772,10 @@ defineFeature(feature, (test) => {
     and(/^the request meta contains:$/, async (table) => {
       const metaData = parseTableToObject(table);
       ctx.updateBody.meta = metaData;
-      
+
       const endpoint = `/persons/${ctx.personId}/attributes/${ctx.attributeId}`;
       ctx.response = await sendPutRequest(endpoint, ctx.updateBody);
-      
+
       if (ctx.response && ctx.response.ok) {
         ctx.responseData = await parseJsonResponse(ctx.response);
       }
@@ -819,10 +819,10 @@ defineFeature(feature, (test) => {
     and(/^the request meta contains:$/, async (table) => {
       const metaData = parseTableToObject(table);
       ctx.updateBody.meta = metaData;
-      
+
       const endpoint = `/persons/${ctx.personId}/attributes/${ctx.attributeId}`;
       ctx.response = await sendPutRequest(endpoint, ctx.updateBody);
-      
+
       if (ctx.response && ctx.response.ok) {
         ctx.responseData = await parseJsonResponse(ctx.response);
       }
@@ -856,16 +856,16 @@ defineFeature(feature, (test) => {
         reason: 'lifecycle test',
         traceId: 'lifecycle-trace'
       };
-      
+
       const requestBody = {
         key: attributeData.key,
         value: attributeData.value,
         meta: meta
       };
-      
+
       const endpoint = `/persons/${ctx.personId}/attributes`;
       ctx.response = await sendPutRequest(endpoint, requestBody);
-      
+
       if (ctx.response && (ctx.response.ok || ctx.response.status === 201)) {
         ctx.responseData = await parseJsonResponse(ctx.response);
         ctx.attributeId = ctx.responseData.id;
@@ -882,7 +882,7 @@ defineFeature(feature, (test) => {
     when('I retrieve all attributes for the person', async () => {
       const endpoint = `/persons/${ctx.personId}/attributes`;
       await sendGet(ctx, endpoint);
-      
+
       if (ctx.response && ctx.response.ok) {
         ctx.allAttributes = await parseJsonResponse(ctx.response);
       }
@@ -901,16 +901,16 @@ defineFeature(feature, (test) => {
         reason: 'lifecycle update',
         traceId: 'lifecycle-update-trace'
       };
-      
+
       const requestBody = {
         key: updateData.key,
         value: updateData.value,
         meta: meta
       };
-      
+
       const endpoint = `/persons/${ctx.personId}/attributes/${ctx.attributeId}`;
       ctx.response = await sendPutRequest(endpoint, requestBody);
-      
+
       if (ctx.response && ctx.response.ok) {
         ctx.responseData = await parseJsonResponse(ctx.response);
       }
@@ -932,7 +932,7 @@ defineFeature(feature, (test) => {
         reason: 'lifecycle delete',
         traceId: 'lifecycle-delete-trace'
       };
-      
+
       const endpoint = `/persons/${ctx.personId}/attributes/${ctx.attributeId}`;
       ctx.response = await sendDeleteRequest(endpoint, { meta });
     });
@@ -969,10 +969,10 @@ defineFeature(feature, (test) => {
     and(/^the request meta contains:$/, async (table) => {
       const metaData = parseTableToObject(table);
       ctx.requestBody.meta = metaData;
-      
+
       const endpoint = `/persons/${ctx.personId}/attributes`;
       ctx.response = await sendPutRequest(endpoint, ctx.requestBody);
-      
+
       if (ctx.response && (ctx.response.ok || ctx.response.status === 201)) {
         ctx.responseData = await parseJsonResponse(ctx.response);
       }
@@ -1009,10 +1009,10 @@ defineFeature(feature, (test) => {
     and(/^the request meta contains:$/, async (table) => {
       const metaData = parseTableToObject(table);
       ctx.requestBody.meta = metaData;
-      
+
       const endpoint = `/persons/${ctx.personId}/attributes`;
       ctx.response = await sendPutRequest(endpoint, ctx.requestBody);
-      
+
       if (ctx.response && (ctx.response.ok || ctx.response.status === 201)) {
         ctx.responseData = await parseJsonResponse(ctx.response);
       }
@@ -1059,10 +1059,10 @@ defineFeature(feature, (test) => {
     and(/^the request meta contains:$/, async (table) => {
       const metaData = parseTableToObject(table);
       ctx.requestBody.meta = metaData;
-      
+
       const endpoint = `/persons/${ctx.personId}/attributes`;
       ctx.response = await sendPutRequest(endpoint, ctx.requestBody);
-      
+
       if (ctx.response && (ctx.response.ok || ctx.response.status === 201)) {
         ctx.responseData = await parseJsonResponse(ctx.response);
       }
@@ -1107,10 +1107,10 @@ defineFeature(feature, (test) => {
     and(/^the request meta contains:$/, async (table) => {
       const metaData = parseTableToObject(table);
       ctx.requestBody.meta = metaData;
-      
+
       const endpoint = `/persons/${ctx.personId}/attributes`;
       ctx.response = await sendPutRequest(endpoint, ctx.requestBody);
-      
+
       if (ctx.response && (ctx.response.ok || ctx.response.status === 201)) {
         ctx.responseData = await parseJsonResponse(ctx.response);
       }
@@ -1124,11 +1124,11 @@ defineFeature(feature, (test) => {
       const rawAttribute = await getRawAttributeFromDb(ctx.personId, key);
       expect(rawAttribute).toBeDefined();
       expect(rawAttribute.encrypted_value).toBeDefined();
-      
+
       // Convert Buffer to string to verify it's not plain text
       const encryptedBytes = rawAttribute.encrypted_value;
       expect(encryptedBytes).not.toEqual(Buffer.from(plainValue));
-      
+
       // Verify it's actually binary data (encrypted)
       expect(Buffer.isBuffer(encryptedBytes)).toBe(true);
     });
@@ -1138,7 +1138,7 @@ defineFeature(feature, (test) => {
       expect(rawAttribute).toBeDefined();
       expect(rawAttribute.encrypted_value).toBeDefined();
       expect(Buffer.isBuffer(rawAttribute.encrypted_value)).toBe(true);
-      
+
       // Encrypted value should be different from plain text
       const encryptedString = rawAttribute.encrypted_value.toString('utf8');
       expect(encryptedString).not.toBe(ctx.attributeValue);
@@ -1167,10 +1167,10 @@ defineFeature(feature, (test) => {
     and(/^the request meta contains:$/, async (table) => {
       const metaData = parseTableToObject(table);
       ctx.requestBody.meta = metaData;
-      
+
       const endpoint = `/persons/${ctx.personId}/attributes`;
       ctx.response = await sendPutRequest(endpoint, ctx.requestBody);
-      
+
       if (ctx.response && (ctx.response.ok || ctx.response.status === 201)) {
         ctx.responseData = await parseJsonResponse(ctx.response);
       }
@@ -1211,10 +1211,10 @@ defineFeature(feature, (test) => {
     and(/^the request meta contains:$/, async (table) => {
       const metaData = parseTableToObject(table);
       ctx.requestBody.meta = metaData;
-      
+
       const endpoint = `/persons/${ctx.personId}/attributes`;
       ctx.response = await sendPutRequest(endpoint, ctx.requestBody);
-      
+
       if (ctx.response && (ctx.response.ok || ctx.response.status === 201)) {
         ctx.responseData = await parseJsonResponse(ctx.response);
       }
@@ -1227,7 +1227,7 @@ defineFeature(feature, (test) => {
     when(/^I send a GET request to "\/persons\/\{personId\}\/attributes"$/, async () => {
       const endpoint = `/persons/${ctx.personId}/attributes`;
       await sendGet(ctx, endpoint);
-      
+
       if (ctx.response && ctx.response.ok) {
         ctx.retrievedAttributes = await parseJsonResponse(ctx.response);
       }
@@ -1248,14 +1248,106 @@ defineFeature(feature, (test) => {
       const rawAttribute = await getRawAttributeFromDb(ctx.personId, key);
       expect(rawAttribute).toBeDefined();
       expect(rawAttribute.encrypted_value).toBeDefined();
-      
+
       // Convert Buffer to string to verify it's not plain text
       const encryptedBytes = rawAttribute.encrypted_value;
       expect(encryptedBytes).not.toEqual(Buffer.from(plainValue));
-      
+
       // Verify it's actually binary data (encrypted)
       expect(Buffer.isBuffer(encryptedBytes)).toBe(true);
     });
   });
-});
 
+  // Scenario: Verify audit log creation
+  test.skip('Verify audit log creation', ({ given, when, then, and }) => {
+    setupBackground({ given, and });
+
+    given(/^a person exists with the following details:$/, async (table) => {
+      const personData = parseTableToObject(table);
+      ctx.createdPerson = await createPerson(personData);
+      ctx.personId = ctx.createdPerson.id;
+    });
+
+    when(/^I send a POST request to "\/persons\/\{personId\}\/attributes" with:$/, async (table) => {
+      const attributeData = parseTableToObject(table);
+      ctx.requestBody = {
+        key: attributeData.key,
+        value: attributeData.value
+      };
+    });
+
+    and(/^the request meta contains:$/, async (table) => {
+      const metaData = parseTableToObject(table);
+      ctx.requestBody.meta = metaData;
+      ctx.traceId = metaData.traceId;
+
+      const endpoint = `/persons/${ctx.personId}/attributes`;
+      ctx.response = await sendPutRequest(endpoint, ctx.requestBody);
+      await parseJsonResponse(ctx.response);
+    });
+
+    then(/^the response status should be (\d+)$/, (statusCode) => {
+      assertResponseStatus(expect, ctx, parseInt(statusCode));
+    });
+
+    and(/^an audit record should be created for traceId "([^"]*)"$/, async (traceId) => {
+      const query = 'SELECT * FROM audit_log WHERE trace_id = $1';
+      const result = await dbClient.query(query, [traceId]);
+      expect(result.rows.length).toBeGreaterThan(0);
+      ctx.auditRecord = result.rows[0];
+    });
+
+    and(/^the audit record should contain caller "([^"]*)" and reason "([^"]*)"$/, (caller, reason) => {
+      expect(ctx.auditRecord.caller).toBe(caller);
+      expect(ctx.auditRecord.reason).toBe(reason);
+    });
+  });
+
+  // Scenario: Idempotency of request with same traceId
+  test.skip('Idempotency of request with same traceId', ({ given, when, then, and }) => {
+    setupBackground({ given, and });
+
+    given(/^a person exists with the following details:$/, async (table) => {
+      const personData = parseTableToObject(table);
+      ctx.createdPerson = await createPerson(personData);
+      ctx.personId = ctx.createdPerson.id;
+    });
+
+    when(/^I send a POST request to "\/persons\/\{personId\}\/attributes" with:$/, async (table) => {
+      const attributeData = parseTableToObject(table);
+      ctx.requestBody = {
+        key: attributeData.key,
+        value: attributeData.value
+      };
+    });
+
+    and(/^the request meta contains:$/, async (table) => {
+      const metaData = parseTableToObject(table);
+      ctx.requestBody.meta = metaData;
+      ctx.traceId = metaData.traceId;
+
+      const endpoint = `/persons/${ctx.personId}/attributes`;
+      ctx.response = await sendPutRequest(endpoint, ctx.requestBody);
+      await parseJsonResponse(ctx.response);
+    });
+
+    then(/^the response status should be (\d+)$/, (statusCode) => {
+      assertResponseStatus(expect, ctx, parseInt(statusCode));
+    });
+
+    when(/^I send the same POST request again with traceId "([^"]*)"$/, async (traceId) => {
+      const endpoint = `/persons/${ctx.personId}/attributes`;
+      ctx.response = await sendPutRequest(endpoint, ctx.requestBody);
+      ctx.responseData = await parseJsonResponse(ctx.response);
+    });
+
+    then(/^the response status should be (\d+)$/, (statusCode) => {
+      assertResponseStatus(expect, ctx, parseInt(statusCode));
+    });
+
+    and('the attribute should be created only once', async () => {
+      const attributes = await getPersonAttributes(ctx.personId);
+      expect(attributes.length).toBe(1);
+    });
+  });
+});
