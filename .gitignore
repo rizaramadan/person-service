@@ -8,3 +8,5 @@ yarn.lock
 package-lock.json
 .idea
 */.idea
+*.out
+coverage*.out
