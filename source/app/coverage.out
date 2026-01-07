@@ -1,0 +1,5 @@
+mode: set
+person-service/healthcheck/health_handler.go:18.69,22.2 1 1
+person-service/healthcheck/health_handler.go:25.58,28.16 2 0
+person-service/healthcheck/health_handler.go:28.16,33.3 1 0
+person-service/healthcheck/health_handler.go:36.2,38.4 1 0
