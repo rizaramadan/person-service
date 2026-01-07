@@ -246,7 +246,7 @@ Feature: Person Attributes Management
     Then the response status should be 201
     And the attribute should be created with empty value
 
-  Scenario: Add multiple attributes with same key to same person
+  Scenario: Add multiple attributes with same key to same person (upsert behavior)
     Given a person exists with the following details:
       | name       | clientId   |
       | Jack Brown | 1414141414 |
@@ -260,7 +260,7 @@ Feature: Person Attributes Management
       | caller  | reason           | traceId                              |
       | user123 | add second email | 161e8400-e29b-41d4-a716-446655440011 |
     Then the response status should be 201
-    And the person should have 2 attributes with key "email"
+    And the person should have 1 attribute with key "email" and value "jack2@example.com"
 
   # Database Encryption Verification
 

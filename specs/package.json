@@ -8,7 +8,7 @@
     "pretest": "npm run docker:build",
     "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js --runInBand",
     "test:no-build": "node --experimental-vm-modules node_modules/jest/bin/jest.js --runInBand",
-    "test:coverage": "npm test && cd ../source/app && go test -coverprofile=../../specs/coverage/unit.out ./... && go tool covdata textfmt -i=../../specs/coverage/go-data -o ../../specs/coverage/int.out && cp ../../specs/coverage/int.out ../../specs/coverage/coverage.out && grep -v 'mode:' ../../specs/coverage/unit.out >> ../../specs/coverage/coverage.out && go tool cover -html=../../specs/coverage/coverage.out -o ../../specs/coverage/report.html && echo 'Combined coverage report generated at coverage/report.html'"
+    "test:coverage": "npm test && cd ../source/app && go test -coverprofile=../../specs/coverage/unit.out ./... && go tool covdata textfmt -i=../../specs/coverage/go-data -o ../../specs/coverage/int.out && cp ../../specs/coverage/int.out ../../specs/coverage/coverage.out && grep -v 'mode:' ../../specs/coverage/unit.out >> ../../specs/coverage/coverage.out && go tool cover -func=../../specs/coverage/coverage.out > ../../specs/coverage/func.txt && go tool cover -html=../../specs/coverage/coverage.out -o ../../specs/coverage/report.html && cd ../../specs && node setup/parse-coverage.js coverage/func.txt coverage/coverage.json && echo 'Combined coverage reports generated in coverage/'"
   },
   "keywords": [],
   "author": "",

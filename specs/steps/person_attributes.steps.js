@@ -1072,15 +1072,13 @@ defineFeature(feature, (test) => {
       assertResponseStatus(expect, ctx, parseInt(statusCode));
     });
 
-    // The feature file expects 2 attributes, but due to UNIQUE constraint,
-    // it will actually update the existing one. Adjusting test to match actual behavior:
-    and(/^the person should have (\d+) attributes with key "([^"]*)"$/, async (count, key) => {
+    // Due to UNIQUE constraint on (person_id, attribute_key), adding an attribute 
+    // with existing key will UPDATE it (upsert), not create a duplicate
+    and(/^the person should have (\d+) attribute with key "([^"]*)" and value "([^"]*)"$/, async (count, key, value) => {
       const attributes = await getPersonAttributes(ctx.personId);
       const matchingAttributes = attributes.filter(attr => attr.attribute_key === key);
-      // Due to ON CONFLICT DO UPDATE in CreateOrUpdatePersonAttribute query,
-      // there will only be 1 attribute with the key, and it will have the new value
-      expect(matchingAttributes.length).toBe(1);
-      expect(matchingAttributes[0].attribute_value).toBe(ctx.newValue);
+      expect(matchingAttributes.length).toBe(parseInt(count));
+      expect(matchingAttributes[0].attribute_value).toBe(value);
     });
   });
 
@@ -1259,7 +1257,7 @@ defineFeature(feature, (test) => {
   });
 
   // Scenario: Verify audit log creation
-  test.skip('Verify audit log creation', ({ given, when, then, and }) => {
+  test('Verify audit log creation', ({ given, when, then, and }) => {
     setupBackground({ given, and });
 
     given(/^a person exists with the following details:$/, async (table) => {
@@ -1291,7 +1289,7 @@ defineFeature(feature, (test) => {
     });
 
     and(/^an audit record should be created for traceId "([^"]*)"$/, async (traceId) => {
-      const query = 'SELECT * FROM audit_log WHERE trace_id = $1';
+      const query = 'SELECT * FROM request_log WHERE trace_id = $1';
       const result = await dbClient.query(query, [traceId]);
       expect(result.rows.length).toBeGreaterThan(0);
       ctx.auditRecord = result.rows[0];
@@ -1304,7 +1302,7 @@ defineFeature(feature, (test) => {
   });
 
   // Scenario: Idempotency of request with same traceId
-  test.skip('Idempotency of request with same traceId', ({ given, when, then, and }) => {
+  test('Idempotency of request with same traceId', ({ given, when, then, and }) => {
     setupBackground({ given, and });
 
     given(/^a person exists with the following details:$/, async (table) => {
