@@ -3,8 +3,6 @@ package main
 import (
 	"os"
 	"testing"
-
-	"github.com/stretchr/testify/assert"
 )
 
 func TestSetupDb_MissingDatabaseURL(t *testing.T) {

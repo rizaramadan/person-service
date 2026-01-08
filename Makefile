@@ -11,9 +11,18 @@ test-only:
 test-unit:
 	cd source/app && go test -v ./...
 
-# run tests with coverage
+# run unit tests with coverage
+test-unit-coverage:
+	cd source/app && go test -coverprofile=../../specs/coverage/unit.out ./...
+	cd source/app && go tool cover -func=../../specs/coverage/unit.out
+
+# run tests with coverage (integration + unit tests merged)
 test-coverage:
 	cd specs && npm run test:coverage
+
+# merge coverage from unit tests and integration tests (run after test-coverage has collected go-data)
+merge-coverage:
+	cd specs && npm run coverage:merge
 
 # serve the coverage report
 serve-coverage:
