@@ -2,6 +2,7 @@ package person_attributes
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"net/http"
 	"net/http/httptest"
@@ -335,7 +336,7 @@ mockDB := &MockDBTX{
 QueryRowFunc: func(ctx context.Context, query string, arguments ...interface{}) pgx.Row {
 return &MockRow{
 ScanFunc: func(dest ...interface{}) error {
-return errors.New("no rows")
+return sql.ErrNoRows
 },
 }
 },
@@ -357,7 +358,7 @@ err := handler.CreateAttribute(c)
 
 assert.NoError(t, err)
 // Should be either not found or internal error depending on error type
-assert.True(t, rec.Code == http.StatusNotFound || rec.Code == http.StatusInternalServerError)
+assert.Equal(t, http.StatusNotFound, rec.Code)
 }
 
 func TestGetAllAttributes_PersonNotFound(t *testing.T) {
@@ -365,7 +366,7 @@ mockDB := &MockDBTX{
 QueryRowFunc: func(ctx context.Context, query string, arguments ...interface{}) pgx.Row {
 return &MockRow{
 ScanFunc: func(dest ...interface{}) error {
-return errors.New("no rows")
+return sql.ErrNoRows
 },
 }
 },
@@ -384,7 +385,7 @@ c.SetParamValues("123e4567-e89b-12d3-a456-426614174000")
 err := handler.GetAllAttributes(c)
 
 assert.NoError(t, err)
-assert.True(t, rec.Code == http.StatusNotFound || rec.Code == http.StatusInternalServerError)
+assert.Equal(t, http.StatusNotFound, rec.Code)
 }
 
 func TestGetAttribute_PersonNotFound(t *testing.T) {
@@ -392,7 +393,7 @@ mockDB := &MockDBTX{
 QueryRowFunc: func(ctx context.Context, query string, arguments ...interface{}) pgx.Row {
 return &MockRow{
 ScanFunc: func(dest ...interface{}) error {
-return errors.New("no rows")
+return sql.ErrNoRows
 },
 }
 },
@@ -411,7 +412,7 @@ c.SetParamValues("123e4567-e89b-12d3-a456-426614174000", "1")
 err := handler.GetAttribute(c)
 
 assert.NoError(t, err)
-assert.True(t, rec.Code == http.StatusNotFound || rec.Code == http.StatusInternalServerError)
+assert.Equal(t, http.StatusNotFound, rec.Code)
 }
 
 func TestUpdateAttribute_PersonNotFound(t *testing.T) {
@@ -419,7 +420,7 @@ mockDB := &MockDBTX{
 QueryRowFunc: func(ctx context.Context, query string, arguments ...interface{}) pgx.Row {
 return &MockRow{
 ScanFunc: func(dest ...interface{}) error {
-return errors.New("no rows")
+return sql.ErrNoRows
 },
 }
 },
@@ -440,7 +441,7 @@ c.SetParamValues("123e4567-e89b-12d3-a456-426614174000", "1")
 err := handler.UpdateAttribute(c)
 
 assert.NoError(t, err)
-assert.True(t, rec.Code == http.StatusNotFound || rec.Code == http.StatusInternalServerError)
+assert.Equal(t, http.StatusNotFound, rec.Code)
 }
 
 func TestDeleteAttribute_PersonNotFound(t *testing.T) {
@@ -448,7 +449,7 @@ mockDB := &MockDBTX{
 QueryRowFunc: func(ctx context.Context, query string, arguments ...interface{}) pgx.Row {
 return &MockRow{
 ScanFunc: func(dest ...interface{}) error {
-return errors.New("no rows")
+return sql.ErrNoRows
 },
 }
 },
@@ -467,7 +468,7 @@ c.SetParamValues("123e4567-e89b-12d3-a456-426614174000", "1")
 err := handler.DeleteAttribute(c)
 
 assert.NoError(t, err)
-assert.True(t, rec.Code == http.StatusNotFound || rec.Code == http.StatusInternalServerError)
+assert.Equal(t, http.StatusNotFound, rec.Code)
 }
 
 func TestCreateAttribute_SuccessWithoutTraceID(t *testing.T) {
@@ -1486,4 +1487,69 @@ err := handler.DeleteAttribute(c)
 assert.NoError(t, err)
 assert.Equal(t, http.StatusInternalServerError, rec.Code)
 assert.Contains(t, rec.Body.String(), "Failed to delete attribute")
+}
+
+// Test for UpdateAttribute without providing a key (should keep existing key)
+func TestUpdateAttribute_WithoutKeyProvided(t *testing.T) {
+personID := pgtype.UUID{}
+personID.Scan("123e4567-e89b-12d3-a456-426614174000")
+
+callCount := 0
+mockDB := &MockDBTX{
+QueryRowFunc: func(ctx context.Context, query string, arguments ...interface{}) pgx.Row {
+callCount++
+if callCount <= 2 {
+return &MockRow{
+ScanFunc: func(dest ...interface{}) error {
+// GetPersonById success, CreateOrUpdatePersonAttribute will be handled
+return nil
+},
+}
+}
+return &MockRow{
+ScanFunc: func(dest ...interface{}) error {
+// GetPersonAttribute after update - return updated attribute with same key
+*dest[0].(*int32) = 1
+*dest[1].(*pgtype.UUID) = personID
+*dest[2].(*string) = "existing-key"
+*dest[3].(*string) = "new-value"
+*dest[4].(*int32) = 1
+*dest[5].(*pgtype.Timestamp) = pgtype.Timestamp{Valid: true}
+*dest[6].(*pgtype.Timestamp) = pgtype.Timestamp{Valid: true}
+return nil
+},
+}
+},
+QueryFunc: func(ctx context.Context, query string, arguments ...interface{}) (pgx.Rows, error) {
+// GetAllPersonAttributes - return existing attribute
+return &MockRows{
+rows: [][]interface{}{
+{int32(1), personID, "existing-key", "old-value", int32(1), pgtype.Timestamp{Valid: true}, pgtype.Timestamp{Valid: true}},
+},
+}, nil
+},
+ExecFunc: func(ctx context.Context, query string, arguments ...interface{}) (pgconn.CommandTag, error) {
+return pgconn.CommandTag{}, nil
+},
+}
+
+queries := db.New(mockDB)
+handler := NewPersonAttributesHandler(queries)
+
+e := echo.New()
+// Update without providing key - should keep existing key
+jsonBody := `{"value":"new-value","meta":{"caller":"test","reason":"testing","traceId":"123"}}`
+req := httptest.NewRequest(http.MethodPut, "/persons/123e4567-e89b-12d3-a456-426614174000/attributes/1", strings.NewReader(jsonBody))
+req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+rec := httptest.NewRecorder()
+c := e.NewContext(req, rec)
+c.SetParamNames("personId", "attributeId")
+c.SetParamValues("123e4567-e89b-12d3-a456-426614174000", "1")
+
+err := handler.UpdateAttribute(c)
+
+assert.NoError(t, err)
+assert.Equal(t, http.StatusOK, rec.Code)
+assert.Contains(t, rec.Body.String(), "existing-key")
+assert.Contains(t, rec.Body.String(), "new-value")
 }

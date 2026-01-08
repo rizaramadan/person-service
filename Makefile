@@ -16,6 +16,10 @@ test-unit-coverage:
 	cd source/app && go test -coverprofile=../../specs/coverage/unit.out ./...
 	cd source/app && go tool cover -func=../../specs/coverage/unit.out
 
+# run mutation tests (requires gremlins to be installed: go install github.com/go-gremlins/gremlins/cmd/gremlins@latest)
+test-mutation:
+	cd source/app && $(shell go env GOPATH)/bin/gremlins unleash --exclude-files="vendor/.*" --exclude-files="internal/db/generated/.*" --exclude-files=".*_test\\.go$$" --exclude-files="main\\.go" --integration --timeout-coefficient=10 .
+
 # run tests with coverage (integration + unit tests merged)
 test-coverage:
 	cd specs && npm run test:coverage
