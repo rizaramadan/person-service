@@ -21,6 +21,7 @@ import {
 import {
   parseJsonResponse,
   sendPutRequest,
+  sendPostRequest,
   sendDeleteRequest,
   sendGetRequest,
   getApiKeyBlue,
@@ -249,7 +250,7 @@ defineFeature(feature, (test) => {
 
       // Send the request with API key
       const endpoint = `/persons/${ctx.personId}/attributes`;
-      ctx.response = await sendPutRequest(endpoint, ctx.requestBody, getRequestOptions());
+      ctx.response = await sendPostRequest(endpoint, ctx.requestBody, getRequestOptions());
 
       if (ctx.response && (ctx.response.ok || ctx.response.status === 201)) {
         ctx.responseData = await parseJsonResponse(ctx.response);

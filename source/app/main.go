@@ -115,6 +115,7 @@ func main() {
 
 	// Person attributes API routes - protected with API key middleware
 	personAttributesGroup := e.Group("/persons", middleware.APIKeyMiddleware())
+	personAttributesGroup.POST("/:personId/attributes", personAttributesHandler.CreateAttribute)
 	personAttributesGroup.PUT("/:personId/attributes", personAttributesHandler.CreateAttribute)
 	personAttributesGroup.GET("/:personId/attributes", personAttributesHandler.GetAllAttributes)
 	personAttributesGroup.GET("/:personId/attributes/:attributeId", personAttributesHandler.GetAttribute)

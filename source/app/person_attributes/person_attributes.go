@@ -47,7 +47,7 @@ func NewPersonAttributesHandler(queries *db.Queries) *PersonAttributesHandler {
 	if encryptionKey == "" {
 		encryptionKey = "default-key-for-dev"
 	}
-	
+
 	return &PersonAttributesHandler{
 		queries:       queries,
 		encryptionKey: encryptionKey,
@@ -55,7 +55,7 @@ func NewPersonAttributesHandler(queries *db.Queries) *PersonAttributesHandler {
 	}
 }
 
-// CreateAttribute handles PUT /persons/:personId/attributes - creates or updates an attribute
+// CreateAttribute handles POST/PUT /persons/:personId/attributes - creates or updates an attribute
 func (h *PersonAttributesHandler) CreateAttribute(c echo.Context) error {
 	// Parse person ID from path
 	personIDStr := c.Param("personId")
@@ -125,18 +125,18 @@ func (h *PersonAttributesHandler) CreateAttribute(c echo.Context) error {
 	if req.Meta != nil && req.Meta.TraceID != "" {
 		// Serialize request body and response for audit
 		requestBody := fmt.Sprintf(`{"key":"%s","value":"%s"}`, req.Key, req.Value)
-		responseBody := ""  // Will be populated after getting the attribute
-		
+		responseBody := "" // Will be populated after getting the attribute
+
 		_, logErr := h.queries.InsertRequestLog(ctx, db.InsertRequestLogParams{
-			TraceID:                req.Meta.TraceID,
-			Caller:                 req.Meta.Caller,
-			Reason:                 req.Meta.Reason,
-			EncryptedRequestBody:   requestBody,
-			EncryptedResponseBody:  responseBody,
-			EncKey:                 h.encryptionKey,
-			KeyVersion:             h.keyVersion,
+			TraceID:               req.Meta.TraceID,
+			Caller:                req.Meta.Caller,
+			Reason:                req.Meta.Reason,
+			EncryptedRequestBody:  requestBody,
+			EncryptedResponseBody: responseBody,
+			EncKey:                h.encryptionKey,
+			KeyVersion:            h.keyVersion,
 		})
-		
+
 		if logErr != nil {
 			// Log the error but don't fail the request
 			fmt.Fprintf(os.Stderr, "WARNING: Failed to insert request log: %v\n", logErr)

@@ -99,14 +99,15 @@ export async function sendGetRequestWithTimeout(path, timeoutMs) {
 export async function sendPostRequest(path, body = {}, options = {}) {
   const serviceUrl = getServiceUrl();
   const url = `${serviceUrl}${path}`;
+  const { headers, ...otherOptions } = options;
   return await fetch(url, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      ...options.headers
+      ...headers
     },
     body: JSON.stringify(body),
-    ...options
+    ...otherOptions
   });
 }
 
@@ -120,14 +121,15 @@ export async function sendPostRequest(path, body = {}, options = {}) {
 export async function sendPutRequest(path, body = {}, options = {}) {
   const serviceUrl = getServiceUrl();
   const url = `${serviceUrl}${path}`;
+  const { headers, ...otherOptions } = options;
   return await fetch(url, {
     method: 'PUT',
     headers: {
       'Content-Type': 'application/json',
-      ...options.headers
+      ...headers
     },
     body: JSON.stringify(body),
-    ...options
+    ...otherOptions
   });
 }
 
@@ -141,13 +143,14 @@ export async function sendPutRequest(path, body = {}, options = {}) {
 export async function sendDeleteRequest(path, body = null, options = {}) {
   const serviceUrl = getServiceUrl();
   const url = `${serviceUrl}${path}`;
+  const { headers, ...otherOptions } = options;
   const fetchOptions = {
     method: 'DELETE',
     headers: {
       'Content-Type': 'application/json',
-      ...options.headers
+      ...headers
     },
-    ...options
+    ...otherOptions
   };
   
   if (body !== null) {
