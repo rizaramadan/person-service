@@ -22,6 +22,9 @@ class TestEnvironment {
     this.dbClient = null;
     this.serviceUrl = null;
     this.postgresPort = null;
+    // API keys for test authentication
+    this.apiKeyBlue = 'person-service-key-11111111-1111-1111-1111-111111111111';
+    this.apiKeyGreen = 'person-service-key-22222222-2222-2222-2222-222222222222';
   }
 
   /**
@@ -143,11 +146,17 @@ class TestEnvironment {
     console.log(`Database connection: ${databaseUrl}`);
     console.log(`Coverage directory: ${coverageDir}`);
 
+    // Define test API keys that follow the required format: person-service-key-<UUID>
+    const testApiKeyBlue = this.apiKeyBlue;
+    const testApiKeyGreen = this.apiKeyGreen;
+
     let startedContainer = null;
     try {
       const container = new GenericContainer('source-person-service:latest')
         .withEnvironment({ DATABASE_URL: databaseUrl })
         .withEnvironment({ ENCRYPTION_KEY_1: 'test-encryption-key-12345' })
+        .withEnvironment({ PERSON_API_KEY_BLUE: testApiKeyBlue })
+        .withEnvironment({ PERSON_API_KEY_GREEN: testApiKeyGreen })
         .withEnvironment({ GOCOVERDIR: '/app/coverage' })
         .withBindMounts([
           {
@@ -331,6 +340,20 @@ class TestEnvironment {
    */
   getServiceUrl() {
     return this.serviceUrl;
+  }
+
+  /**
+   * Get API key (blue)
+   */
+  getApiKeyBlue() {
+    return this.apiKeyBlue;
+  }
+
+  /**
+   * Get API key (green)
+   */
+  getApiKeyGreen() {
+    return this.apiKeyGreen;
   }
 }
 

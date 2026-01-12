@@ -17,6 +17,39 @@ export function getServiceUrl() {
 }
 
 /**
+ * Get the default API key for authenticated requests
+ * @returns {string} API key (blue by default)
+ */
+export function getDefaultApiKey() {
+  if (!global.__TEST_ENV__) {
+    throw new Error('Test environment not initialized');
+  }
+  return global.__TEST_ENV__.getApiKeyBlue();
+}
+
+/**
+ * Get the blue API key
+ * @returns {string} Blue API key
+ */
+export function getApiKeyBlue() {
+  if (!global.__TEST_ENV__) {
+    throw new Error('Test environment not initialized');
+  }
+  return global.__TEST_ENV__.getApiKeyBlue();
+}
+
+/**
+ * Get the green API key
+ * @returns {string} Green API key
+ */
+export function getApiKeyGreen() {
+  if (!global.__TEST_ENV__) {
+    throw new Error('Test environment not initialized');
+  }
+  return global.__TEST_ENV__.getApiKeyGreen();
+}
+
+/**
  * Send a GET request to the service
  * @param {string} path - API endpoint path
  * @param {Object} options - Fetch options (optional)

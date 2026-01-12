@@ -6,10 +6,11 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"os/signal"
 	health "person-service/healthcheck"
 	key_value "person-service/key_value"
+	"person-service/middleware"
 	person_attributes "person-service/person_attributes"
-	"os/signal"
 	"strconv"
 	"syscall"
 	"time"
@@ -112,12 +113,13 @@ func main() {
 	e.GET("/api/key-value/:key", keyValueHandler.GetValue)
 	e.DELETE("/api/key-value/:key", keyValueHandler.DeleteValue)
 
-	// Person attributes API routes
-	e.PUT("/persons/:personId/attributes", personAttributesHandler.CreateAttribute)
-	e.GET("/persons/:personId/attributes", personAttributesHandler.GetAllAttributes)
-	e.GET("/persons/:personId/attributes/:attributeId", personAttributesHandler.GetAttribute)
-	e.PUT("/persons/:personId/attributes/:attributeId", personAttributesHandler.UpdateAttribute)
-	e.DELETE("/persons/:personId/attributes/:attributeId", personAttributesHandler.DeleteAttribute)
+	// Person attributes API routes - protected with API key middleware
+	personAttributesGroup := e.Group("/persons", middleware.APIKeyMiddleware())
+	personAttributesGroup.PUT("/:personId/attributes", personAttributesHandler.CreateAttribute)
+	personAttributesGroup.GET("/:personId/attributes", personAttributesHandler.GetAllAttributes)
+	personAttributesGroup.GET("/:personId/attributes/:attributeId", personAttributesHandler.GetAttribute)
+	personAttributesGroup.PUT("/:personId/attributes/:attributeId", personAttributesHandler.UpdateAttribute)
+	personAttributesGroup.DELETE("/:personId/attributes/:attributeId", personAttributesHandler.DeleteAttribute)
 
 	// Configure server
 	e.Server = &http.Server{

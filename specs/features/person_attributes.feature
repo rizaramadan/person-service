@@ -6,6 +6,8 @@ Feature: Person Attributes Management
   Background:
     Given the persons and attributes table is empty
     And the service is running
+    And I have a valid API key
+
   # Happy Path Scenarios
 
   Scenario: Add a single attribute to a person
@@ -162,6 +164,62 @@ Feature: Person Attributes Management
       | email | test@example.com |
     Then the response status should be 400
     And the error should indicate missing required field "meta"
+
+  # API Key Authentication Scenarios
+
+  Scenario: Attempt to add attribute without API key
+    Given a person exists with the following details:
+      | name         | clientId   |
+      | No Key User  | 8080808080 |
+    When I send a POST request to "/persons/{personId}/attributes" without API key:
+      | key   | value            |
+      | email | test@example.com |
+    And the request meta contains:
+      | caller  | reason       | traceId                              |
+      | user123 | no key test  | 221e8400-e29b-41d4-a716-446655440017 |
+    Then the response status should be 401
+    And the error message should indicate "Missing required header"
+
+  Scenario: Attempt to add attribute with invalid API key format
+    Given a person exists with the following details:
+      | name           | clientId   |
+      | Bad Key User   | 8181818181 |
+    When I send a POST request to "/persons/{personId}/attributes" with invalid API key "invalid-key-format":
+      | key   | value            |
+      | email | test@example.com |
+    And the request meta contains:
+      | caller  | reason          | traceId                              |
+      | user123 | bad format test | 231e8400-e29b-41d4-a716-446655440018 |
+    Then the response status should be 401
+    And the error message should indicate "Invalid API key format"
+
+  Scenario: Attempt to add attribute with wrong API key
+    Given a person exists with the following details:
+      | name          | clientId   |
+      | Wrong Key User | 8282828282 |
+    When I send a POST request to "/persons/{personId}/attributes" with invalid API key "person-service-key-00000000-0000-0000-0000-000000000000":
+      | key   | value            |
+      | email | test@example.com |
+    And the request meta contains:
+      | caller  | reason         | traceId                              |
+      | user123 | wrong key test | 241e8400-e29b-41d4-a716-446655440019 |
+    Then the response status should be 401
+    And the error message should indicate "Invalid API key"
+
+  Scenario: Successfully use green API key
+    Given a person exists with the following details:
+      | name           | clientId   |
+      | Green Key User | 8383838383 |
+    When I send a POST request to "/persons/{personId}/attributes" using green API key with:
+      | key   | value                   |
+      | email | greenkey@example.com    |
+    And the request meta contains:
+      | caller  | reason         | traceId                              |
+      | user123 | green key test | 251e8400-e29b-41d4-a716-446655440020 |
+    Then the response status should be 201
+    And the response should contain an attribute with:
+      | key   | value                   |
+      | email | greenkey@example.com    |
 
   # Attribute Value Update Scenarios
 

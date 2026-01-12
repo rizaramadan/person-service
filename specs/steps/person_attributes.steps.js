@@ -21,7 +21,10 @@ import {
 import {
   parseJsonResponse,
   sendPutRequest,
-  sendDeleteRequest
+  sendDeleteRequest,
+  sendGetRequest,
+  getApiKeyBlue,
+  getApiKeyGreen
 } from '../helpers/api.js';
 
 const feature = loadFeature('../features/person_attributes.feature', {
@@ -90,12 +93,27 @@ defineFeature(feature, (test) => {
     ctx.createdPerson = null;
     ctx.createdAttribute = null;
     ctx.meta = null;
+    ctx.apiKey = null; // Will be set in background step
+    ctx.useApiKey = true; // Default to using API key
 
     // Get database client from global test environment
     if (global.__TEST_ENV__) {
       dbClient = global.__TEST_ENV__.getDbClient();
     }
   });
+
+  // Helper: Get request options with API key header
+  function getRequestOptions(apiKey = null) {
+    const key = apiKey !== null ? apiKey : ctx.apiKey;
+    if (key === false || key === null) {
+      return {}; // No API key header
+    }
+    return {
+      headers: {
+        'x-api-key': key
+      }
+    };
+  }
 
   // Background step - runs before each scenario
   const setupBackground = ({ given, and }) => {
@@ -111,6 +129,11 @@ defineFeature(feature, (test) => {
 
     and('the service is running', () => {
       assertServiceRunning(expect);
+    });
+
+    and('I have a valid API key', () => {
+      // Use blue API key by default for all tests
+      ctx.apiKey = getApiKeyBlue();
     });
   };
 
@@ -224,9 +247,9 @@ defineFeature(feature, (test) => {
       ctx.meta = metaData;
       ctx.requestBody.meta = metaData;
 
-      // Send the request
+      // Send the request with API key
       const endpoint = `/persons/${ctx.personId}/attributes`;
-      ctx.response = await sendPutRequest(endpoint, ctx.requestBody);
+      ctx.response = await sendPutRequest(endpoint, ctx.requestBody, getRequestOptions());
 
       if (ctx.response && (ctx.response.ok || ctx.response.status === 201)) {
         ctx.responseData = await parseJsonResponse(ctx.response);
@@ -294,7 +317,7 @@ defineFeature(feature, (test) => {
           meta: meta
         };
 
-        const response = await sendPutRequest(endpoint, requestBody);
+        const response = await sendPutRequest(endpoint, requestBody, getRequestOptions());
         ctx.addedAttributes.push(response);
       }
     });
@@ -333,7 +356,7 @@ defineFeature(feature, (test) => {
 
     when(/^I send a GET request to "\/persons\/\{personId\}\/attributes"$/, async () => {
       const endpoint = `/persons/${ctx.personId}/attributes`;
-      await sendGet(ctx, endpoint);
+      ctx.response = await sendGetRequest(endpoint, getRequestOptions());
 
       if (ctx.response && ctx.response.ok) {
         ctx.responseData = await parseJsonResponse(ctx.response);
@@ -392,7 +415,7 @@ defineFeature(feature, (test) => {
       ctx.updateBody.meta = metaData;
 
       const endpoint = `/persons/${ctx.personId}/attributes/${ctx.attributeId}`;
-      ctx.response = await sendPutRequest(endpoint, ctx.updateBody);
+      ctx.response = await sendPutRequest(endpoint, ctx.updateBody, getRequestOptions());
 
       if (ctx.response && ctx.response.ok) {
         ctx.responseData = await parseJsonResponse(ctx.response);
@@ -448,7 +471,7 @@ defineFeature(feature, (test) => {
 
       const endpoint = `/persons/${ctx.personId}/attributes/${ctx.attributeId}`;
       const requestBody = { meta: metaData };
-      ctx.response = await sendDeleteRequest(endpoint, requestBody);
+      ctx.response = await sendDeleteRequest(endpoint, requestBody, getRequestOptions());
 
       if (ctx.response && ctx.response.ok) {
         try {
@@ -496,7 +519,7 @@ defineFeature(feature, (test) => {
 
     when(/^I send a GET request to "\/persons\/\{personId\}\/attributes"$/, async () => {
       const endpoint = `/persons/${ctx.personId}/attributes`;
-      await sendGet(ctx, endpoint);
+      ctx.response = await sendGetRequest(endpoint, getRequestOptions());
 
       if (ctx.response && ctx.response.ok) {
         ctx.responseData = await parseJsonResponse(ctx.response);
@@ -530,7 +553,7 @@ defineFeature(feature, (test) => {
       const metaData = parseTableToObject(table);
       ctx.requestBody.meta = metaData;
 
-      ctx.response = await sendPutRequest('/persons/99999/attributes', ctx.requestBody);
+      ctx.response = await sendPutRequest('/persons/99999/attributes', ctx.requestBody, getRequestOptions());
 
       if (ctx.response && !ctx.response.ok) {
         try {
@@ -571,7 +594,7 @@ defineFeature(feature, (test) => {
       ctx.requestBody.meta = metaData;
 
       const endpoint = `/persons/${ctx.personId}/attributes`;
-      ctx.response = await sendPutRequest(endpoint, ctx.requestBody);
+      ctx.response = await sendPutRequest(endpoint, ctx.requestBody, getRequestOptions());
 
       if (ctx.response && !ctx.response.ok) {
         try {
@@ -614,7 +637,7 @@ defineFeature(feature, (test) => {
       ctx.requestBody.meta = metaData;
 
       const endpoint = `/persons/${ctx.personId}/attributes/99999`;
-      ctx.response = await sendPutRequest(endpoint, ctx.requestBody);
+      ctx.response = await sendPutRequest(endpoint, ctx.requestBody, getRequestOptions());
 
       if (ctx.response && !ctx.response.ok) {
         try {
@@ -655,7 +678,7 @@ defineFeature(feature, (test) => {
       const requestBody = { meta: metaData };
 
       const endpoint = `/persons/${ctx.personId}/attributes/99999`;
-      ctx.response = await sendDeleteRequest(endpoint, requestBody);
+      ctx.response = await sendDeleteRequest(endpoint, requestBody, getRequestOptions());
 
       if (ctx.response && !ctx.response.ok) {
         try {
@@ -682,7 +705,7 @@ defineFeature(feature, (test) => {
     setupBackground({ given, and });
 
     when(/^I send a GET request to "\/persons\/99999\/attributes"$/, async () => {
-      await sendGet(ctx, '/persons/99999/attributes');
+      ctx.response = await sendGetRequest('/persons/99999/attributes', getRequestOptions());
 
       if (ctx.response && !ctx.response.ok) {
         try {
@@ -723,7 +746,7 @@ defineFeature(feature, (test) => {
       };
 
       const endpoint = `/persons/${ctx.personId}/attributes`;
-      ctx.response = await sendPutRequest(endpoint, requestBody);
+      ctx.response = await sendPutRequest(endpoint, requestBody, getRequestOptions());
 
       if (ctx.response && !ctx.response.ok) {
         try {
@@ -774,7 +797,7 @@ defineFeature(feature, (test) => {
       ctx.updateBody.meta = metaData;
 
       const endpoint = `/persons/${ctx.personId}/attributes/${ctx.attributeId}`;
-      ctx.response = await sendPutRequest(endpoint, ctx.updateBody);
+      ctx.response = await sendPutRequest(endpoint, ctx.updateBody, getRequestOptions());
 
       if (ctx.response && ctx.response.ok) {
         ctx.responseData = await parseJsonResponse(ctx.response);
@@ -821,7 +844,7 @@ defineFeature(feature, (test) => {
       ctx.updateBody.meta = metaData;
 
       const endpoint = `/persons/${ctx.personId}/attributes/${ctx.attributeId}`;
-      ctx.response = await sendPutRequest(endpoint, ctx.updateBody);
+      ctx.response = await sendPutRequest(endpoint, ctx.updateBody, getRequestOptions());
 
       if (ctx.response && ctx.response.ok) {
         ctx.responseData = await parseJsonResponse(ctx.response);
@@ -864,7 +887,7 @@ defineFeature(feature, (test) => {
       };
 
       const endpoint = `/persons/${ctx.personId}/attributes`;
-      ctx.response = await sendPutRequest(endpoint, requestBody);
+      ctx.response = await sendPutRequest(endpoint, requestBody, getRequestOptions());
 
       if (ctx.response && (ctx.response.ok || ctx.response.status === 201)) {
         ctx.responseData = await parseJsonResponse(ctx.response);
@@ -881,7 +904,7 @@ defineFeature(feature, (test) => {
 
     when('I retrieve all attributes for the person', async () => {
       const endpoint = `/persons/${ctx.personId}/attributes`;
-      await sendGet(ctx, endpoint);
+      ctx.response = await sendGetRequest(endpoint, getRequestOptions());
 
       if (ctx.response && ctx.response.ok) {
         ctx.allAttributes = await parseJsonResponse(ctx.response);
@@ -909,7 +932,7 @@ defineFeature(feature, (test) => {
       };
 
       const endpoint = `/persons/${ctx.personId}/attributes/${ctx.attributeId}`;
-      ctx.response = await sendPutRequest(endpoint, requestBody);
+      ctx.response = await sendPutRequest(endpoint, requestBody, getRequestOptions());
 
       if (ctx.response && ctx.response.ok) {
         ctx.responseData = await parseJsonResponse(ctx.response);
@@ -934,7 +957,7 @@ defineFeature(feature, (test) => {
       };
 
       const endpoint = `/persons/${ctx.personId}/attributes/${ctx.attributeId}`;
-      ctx.response = await sendDeleteRequest(endpoint, { meta });
+      ctx.response = await sendDeleteRequest(endpoint, { meta }, getRequestOptions());
     });
 
     then('the attribute should be deleted successfully', () => {
@@ -971,7 +994,7 @@ defineFeature(feature, (test) => {
       ctx.requestBody.meta = metaData;
 
       const endpoint = `/persons/${ctx.personId}/attributes`;
-      ctx.response = await sendPutRequest(endpoint, ctx.requestBody);
+      ctx.response = await sendPutRequest(endpoint, ctx.requestBody, getRequestOptions());
 
       if (ctx.response && (ctx.response.ok || ctx.response.status === 201)) {
         ctx.responseData = await parseJsonResponse(ctx.response);
@@ -1011,7 +1034,7 @@ defineFeature(feature, (test) => {
       ctx.requestBody.meta = metaData;
 
       const endpoint = `/persons/${ctx.personId}/attributes`;
-      ctx.response = await sendPutRequest(endpoint, ctx.requestBody);
+      ctx.response = await sendPutRequest(endpoint, ctx.requestBody, getRequestOptions());
 
       if (ctx.response && (ctx.response.ok || ctx.response.status === 201)) {
         ctx.responseData = await parseJsonResponse(ctx.response);
@@ -1061,7 +1084,7 @@ defineFeature(feature, (test) => {
       ctx.requestBody.meta = metaData;
 
       const endpoint = `/persons/${ctx.personId}/attributes`;
-      ctx.response = await sendPutRequest(endpoint, ctx.requestBody);
+      ctx.response = await sendPutRequest(endpoint, ctx.requestBody, getRequestOptions());
 
       if (ctx.response && (ctx.response.ok || ctx.response.status === 201)) {
         ctx.responseData = await parseJsonResponse(ctx.response);
@@ -1107,7 +1130,7 @@ defineFeature(feature, (test) => {
       ctx.requestBody.meta = metaData;
 
       const endpoint = `/persons/${ctx.personId}/attributes`;
-      ctx.response = await sendPutRequest(endpoint, ctx.requestBody);
+      ctx.response = await sendPutRequest(endpoint, ctx.requestBody, getRequestOptions());
 
       if (ctx.response && (ctx.response.ok || ctx.response.status === 201)) {
         ctx.responseData = await parseJsonResponse(ctx.response);
@@ -1167,7 +1190,7 @@ defineFeature(feature, (test) => {
       ctx.requestBody.meta = metaData;
 
       const endpoint = `/persons/${ctx.personId}/attributes`;
-      ctx.response = await sendPutRequest(endpoint, ctx.requestBody);
+      ctx.response = await sendPutRequest(endpoint, ctx.requestBody, getRequestOptions());
 
       if (ctx.response && (ctx.response.ok || ctx.response.status === 201)) {
         ctx.responseData = await parseJsonResponse(ctx.response);
@@ -1211,7 +1234,7 @@ defineFeature(feature, (test) => {
       ctx.requestBody.meta = metaData;
 
       const endpoint = `/persons/${ctx.personId}/attributes`;
-      ctx.response = await sendPutRequest(endpoint, ctx.requestBody);
+      ctx.response = await sendPutRequest(endpoint, ctx.requestBody, getRequestOptions());
 
       if (ctx.response && (ctx.response.ok || ctx.response.status === 201)) {
         ctx.responseData = await parseJsonResponse(ctx.response);
@@ -1224,7 +1247,7 @@ defineFeature(feature, (test) => {
 
     when(/^I send a GET request to "\/persons\/\{personId\}\/attributes"$/, async () => {
       const endpoint = `/persons/${ctx.personId}/attributes`;
-      await sendGet(ctx, endpoint);
+      ctx.response = await sendGetRequest(endpoint, getRequestOptions());
 
       if (ctx.response && ctx.response.ok) {
         ctx.retrievedAttributes = await parseJsonResponse(ctx.response);
@@ -1280,7 +1303,7 @@ defineFeature(feature, (test) => {
       ctx.traceId = metaData.traceId;
 
       const endpoint = `/persons/${ctx.personId}/attributes`;
-      ctx.response = await sendPutRequest(endpoint, ctx.requestBody);
+      ctx.response = await sendPutRequest(endpoint, ctx.requestBody, getRequestOptions());
       await parseJsonResponse(ctx.response);
     });
 
@@ -1325,7 +1348,7 @@ defineFeature(feature, (test) => {
       ctx.traceId = metaData.traceId;
 
       const endpoint = `/persons/${ctx.personId}/attributes`;
-      ctx.response = await sendPutRequest(endpoint, ctx.requestBody);
+      ctx.response = await sendPutRequest(endpoint, ctx.requestBody, getRequestOptions());
       await parseJsonResponse(ctx.response);
     });
 
@@ -1335,7 +1358,7 @@ defineFeature(feature, (test) => {
 
     when(/^I send the same POST request again with traceId "([^"]*)"$/, async (traceId) => {
       const endpoint = `/persons/${ctx.personId}/attributes`;
-      ctx.response = await sendPutRequest(endpoint, ctx.requestBody);
+      ctx.response = await sendPutRequest(endpoint, ctx.requestBody, getRequestOptions());
       ctx.responseData = await parseJsonResponse(ctx.response);
     });
 
@@ -1346,6 +1369,198 @@ defineFeature(feature, (test) => {
     and('the attribute should be created only once', async () => {
       const attributes = await getPersonAttributes(ctx.personId);
       expect(attributes.length).toBe(1);
+    });
+  });
+
+  // API Key Authentication Scenarios
+
+  // Scenario: Attempt to add attribute without API key
+  test('Attempt to add attribute without API key', ({ given, when, then, and }) => {
+    setupBackground({ given, and });
+
+    given(/^a person exists with the following details:$/, async (table) => {
+      const personData = parseTableToObject(table);
+      ctx.createdPerson = await createPerson(personData);
+      ctx.personId = ctx.createdPerson.id;
+    });
+
+    when(/^I send a POST request to "\/persons\/\{personId\}\/attributes" without API key:$/, async (table) => {
+      const attributeData = parseTableToObject(table);
+      ctx.requestBody = {
+        key: attributeData.key,
+        value: attributeData.value
+      };
+      // Mark that we should NOT use API key for this request
+      ctx.apiKey = null;
+    });
+
+    and(/^the request meta contains:$/, async (table) => {
+      const metaData = parseTableToObject(table);
+      ctx.requestBody.meta = metaData;
+
+      const endpoint = `/persons/${ctx.personId}/attributes`;
+      // Send without API key
+      ctx.response = await sendPutRequest(endpoint, ctx.requestBody, {});
+
+      if (ctx.response) {
+        try {
+          ctx.responseData = await parseJsonResponse(ctx.response);
+        } catch (e) {
+          ctx.responseData = null;
+        }
+      }
+    });
+
+    then(/^the response status should be (\d+)$/, (statusCode) => {
+      assertResponseStatus(expect, ctx, parseInt(statusCode));
+    });
+
+    and(/^the error message should indicate "([^"]*)"$/, (errorMessage) => {
+      expect(ctx.responseData).toBeDefined();
+      const responseText = JSON.stringify(ctx.responseData).toLowerCase();
+      expect(responseText).toContain(errorMessage.toLowerCase());
+    });
+  });
+
+  // Scenario: Attempt to add attribute with invalid API key format
+  test('Attempt to add attribute with invalid API key format', ({ given, when, then, and }) => {
+    setupBackground({ given, and });
+
+    given(/^a person exists with the following details:$/, async (table) => {
+      const personData = parseTableToObject(table);
+      ctx.createdPerson = await createPerson(personData);
+      ctx.personId = ctx.createdPerson.id;
+    });
+
+    when(/^I send a POST request to "\/persons\/\{personId\}\/attributes" with invalid API key "([^"]*)":$/, async (invalidKey, table) => {
+      const attributeData = parseTableToObject(table);
+      ctx.requestBody = {
+        key: attributeData.key,
+        value: attributeData.value
+      };
+      ctx.invalidApiKey = invalidKey;
+    });
+
+    and(/^the request meta contains:$/, async (table) => {
+      const metaData = parseTableToObject(table);
+      ctx.requestBody.meta = metaData;
+
+      const endpoint = `/persons/${ctx.personId}/attributes`;
+      // Send with invalid API key
+      ctx.response = await sendPutRequest(endpoint, ctx.requestBody, {
+        headers: { 'x-api-key': ctx.invalidApiKey }
+      });
+
+      if (ctx.response) {
+        try {
+          ctx.responseData = await parseJsonResponse(ctx.response);
+        } catch (e) {
+          ctx.responseData = null;
+        }
+      }
+    });
+
+    then(/^the response status should be (\d+)$/, (statusCode) => {
+      assertResponseStatus(expect, ctx, parseInt(statusCode));
+    });
+
+    and(/^the error message should indicate "([^"]*)"$/, (errorMessage) => {
+      expect(ctx.responseData).toBeDefined();
+      const responseText = JSON.stringify(ctx.responseData).toLowerCase();
+      expect(responseText).toContain(errorMessage.toLowerCase());
+    });
+  });
+
+  // Scenario: Attempt to add attribute with wrong API key
+  test('Attempt to add attribute with wrong API key', ({ given, when, then, and }) => {
+    setupBackground({ given, and });
+
+    given(/^a person exists with the following details:$/, async (table) => {
+      const personData = parseTableToObject(table);
+      ctx.createdPerson = await createPerson(personData);
+      ctx.personId = ctx.createdPerson.id;
+    });
+
+    when(/^I send a POST request to "\/persons\/\{personId\}\/attributes" with invalid API key "([^"]*)":$/, async (invalidKey, table) => {
+      const attributeData = parseTableToObject(table);
+      ctx.requestBody = {
+        key: attributeData.key,
+        value: attributeData.value
+      };
+      ctx.invalidApiKey = invalidKey;
+    });
+
+    and(/^the request meta contains:$/, async (table) => {
+      const metaData = parseTableToObject(table);
+      ctx.requestBody.meta = metaData;
+
+      const endpoint = `/persons/${ctx.personId}/attributes`;
+      // Send with wrong API key (valid format but not configured)
+      ctx.response = await sendPutRequest(endpoint, ctx.requestBody, {
+        headers: { 'x-api-key': ctx.invalidApiKey }
+      });
+
+      if (ctx.response) {
+        try {
+          ctx.responseData = await parseJsonResponse(ctx.response);
+        } catch (e) {
+          ctx.responseData = null;
+        }
+      }
+    });
+
+    then(/^the response status should be (\d+)$/, (statusCode) => {
+      assertResponseStatus(expect, ctx, parseInt(statusCode));
+    });
+
+    and(/^the error message should indicate "([^"]*)"$/, (errorMessage) => {
+      expect(ctx.responseData).toBeDefined();
+      const responseText = JSON.stringify(ctx.responseData).toLowerCase();
+      expect(responseText).toContain(errorMessage.toLowerCase());
+    });
+  });
+
+  // Scenario: Successfully use green API key
+  test('Successfully use green API key', ({ given, when, then, and }) => {
+    setupBackground({ given, and });
+
+    given(/^a person exists with the following details:$/, async (table) => {
+      const personData = parseTableToObject(table);
+      ctx.createdPerson = await createPerson(personData);
+      ctx.personId = ctx.createdPerson.id;
+    });
+
+    when(/^I send a POST request to "\/persons\/\{personId\}\/attributes" using green API key with:$/, async (table) => {
+      const attributeData = parseTableToObject(table);
+      ctx.requestBody = {
+        key: attributeData.key,
+        value: attributeData.value
+      };
+      // Use green API key
+      ctx.apiKey = getApiKeyGreen();
+    });
+
+    and(/^the request meta contains:$/, async (table) => {
+      const metaData = parseTableToObject(table);
+      ctx.requestBody.meta = metaData;
+
+      const endpoint = `/persons/${ctx.personId}/attributes`;
+      ctx.response = await sendPutRequest(endpoint, ctx.requestBody, getRequestOptions());
+
+      if (ctx.response && (ctx.response.ok || ctx.response.status === 201)) {
+        ctx.responseData = await parseJsonResponse(ctx.response);
+      }
+    });
+
+    then(/^the response status should be (\d+)$/, (statusCode) => {
+      assertResponseStatus(expect, ctx, parseInt(statusCode));
+    });
+
+    and(/^the response should contain an attribute with:$/, async (table) => {
+      const expectedData = parseTableToObject(table);
+      expect(ctx.responseData).toBeDefined();
+      expect(ctx.responseData.key).toBe(expectedData.key);
+      expect(ctx.responseData.value).toBe(expectedData.value);
     });
   });
 });
