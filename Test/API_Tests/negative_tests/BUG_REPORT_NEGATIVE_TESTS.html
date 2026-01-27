@@ -1,0 +1,910 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bug Report - Negative Tests Results</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background: #f5f5f5;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 2px 20px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        header {
+            background: linear-gradient(135deg, #d32f2f 0%, #f44336 100%);
+            color: white;
+            padding: 40px;
+            text-align: center;
+        }
+        header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+        .severity-badge {
+            display: inline-block;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-weight: bold;
+            font-size: 0.9em;
+            margin: 5px;
+        }
+        .critical { background: #d32f2f; color: white; }
+        .high { background: #f57c00; color: white; }
+        .medium { background: #ffa726; color: white; }
+        .low { background: #66bb6a; color: white; }
+        
+        .summary {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            padding: 40px;
+            background: #fafafa;
+        }
+        .stat-card {
+            background: white;
+            padding: 25px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+            border-left: 4px solid;
+        }
+        .stat-card.critical { border-color: #d32f2f; }
+        .stat-card.medium { border-color: #ffa726; }
+        .stat-card.passed { border-color: #66bb6a; }
+        .stat-card h3 { color: #666; font-size: 0.9em; margin-bottom: 10px; }
+        .stat-card .number { font-size: 2.5em; font-weight: bold; color: #333; }
+        
+        .content {
+            padding: 40px;
+        }
+        .bug {
+            background: white;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            margin-bottom: 30px;
+            overflow: hidden;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+        }
+        .bug-header {
+            padding: 20px 25px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid #e0e0e0;
+        }
+        .bug-header.critical { background: #ffebee; border-left: 5px solid #d32f2f; }
+        .bug-header.high { background: #fff3e0; border-left: 5px solid #f57c00; }
+        .bug-header.medium { background: #fff8e1; border-left: 5px solid #ffa726; }
+        .bug-header.low { background: #f1f8e9; border-left: 5px solid #66bb6a; }
+        
+        .bug-title {
+            font-size: 1.3em;
+            font-weight: 600;
+            color: #333;
+        }
+        .bug-body {
+            padding: 25px;
+        }
+        .bug-section {
+            margin-bottom: 20px;
+        }
+        .bug-section h4 {
+            color: #555;
+            margin-bottom: 10px;
+            font-size: 1.1em;
+        }
+        .code-block {
+            background: #2d2d2d;
+            color: #f8f8f2;
+            padding: 15px;
+            border-radius: 5px;
+            overflow-x: auto;
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 0.9em;
+            margin: 10px 0;
+        }
+        .code-inline {
+            background: #f5f5f5;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: monospace;
+            color: #d32f2f;
+        }
+        .impact-list {
+            list-style: none;
+            padding-left: 0;
+        }
+        .impact-list li {
+            padding: 8px 0;
+            padding-left: 25px;
+            position: relative;
+        }
+        .impact-list li:before {
+            content: '❌';
+            position: absolute;
+            left: 0;
+        }
+        .test-cases {
+            background: #f9f9f9;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 10px 0;
+        }
+        .test-cases ol {
+            padding-left: 20px;
+        }
+        .test-cases li {
+            margin: 5px 0;
+            color: #d32f2f;
+            font-family: monospace;
+            font-size: 0.9em;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+        th, td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #e0e0e0;
+        }
+        th {
+            background: #f5f5f5;
+            font-weight: 600;
+            color: #555;
+        }
+        tr:hover {
+            background: #fafafa;
+        }
+        .recommendations {
+            background: #e3f2fd;
+            border-left: 4px solid #2196f3;
+            padding: 20px;
+            border-radius: 5px;
+            margin: 20px 0;
+        }
+        .recommendations h3 {
+            color: #1976d2;
+            margin-bottom: 15px;
+        }
+        .recommendations ul {
+            padding-left: 20px;
+        }
+        .recommendations li {
+            margin: 10px 0;
+        }
+        footer {
+            background: #f5f5f5;
+            padding: 30px;
+            text-align: center;
+            color: #666;
+            border-top: 1px solid #e0e0e0;
+        }
+        .metadata {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        .metadata-item {
+            background: #f9f9f9;
+            padding: 15px;
+            border-radius: 5px;
+        }
+        .metadata-item strong {
+            display: block;
+            color: #666;
+            font-size: 0.85em;
+            margin-bottom: 5px;
+        }
+        .count-badge {
+            background: #d32f2f;
+            color: white;
+            padding: 3px 10px;
+            border-radius: 12px;
+            font-size: 0.85em;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🐛 BUG REPORT</h1>
+            <p style="font-size: 1.2em; margin-top: 10px;">Negative Test Results - Person Service API</p>
+            <p style="opacity: 0.9; margin-top: 10px;">Generated: January 21, 2026</p>
+            <div style="margin-top: 20px;">
+                <span class="severity-badge critical">7 CRITICAL</span>
+                <span class="severity-badge high">3 HIGH</span>
+                <span class="severity-badge medium">15 MEDIUM</span>
+                <span class="severity-badge low">1 LOW</span>
+            </div>
+        </header>
+
+        <div class="summary">
+            <div class="stat-card critical">
+                <h3>TOTAL BUGS FOUND</h3>
+                <div class="number">26</div>
+                <p style="margin-top: 10px; color: #666;">Across 6 bug types</p>
+            </div>
+            <div class="stat-card critical">
+                <h3>FAILED TESTS</h3>
+                <div class="number">24</div>
+                <p style="margin-top: 10px; color: #666;">Out of 149 tests</p>
+            </div>
+            <div class="stat-card passed">
+                <h3>PASSED TESTS</h3>
+                <div class="number">125</div>
+                <p style="margin-top: 10px; color: #666;">84% pass rate</p>
+            </div>
+            <div class="stat-card medium">
+                <h3>AFFECTED ENDPOINTS</h3>
+                <div class="number">8</div>
+                <p style="margin-top: 10px; color: #666;">Out of 10 endpoints</p>
+            </div>
+        </div>
+
+        <div class="content">
+            <h2 style="margin-bottom: 30px; color: #333;">🔍 Detailed Bug Analysis</h2>
+
+            <!-- BUG 1 -->
+            <div class="bug">
+                <div class="bug-header critical">
+                    <div class="bug-title">BUG #1: Server Crash (500 Internal Server Error)</div>
+                    <span class="severity-badge critical">CRITICAL</span>
+                </div>
+                <div class="bug-body">
+                    <div class="metadata">
+                        <div class="metadata-item">
+                            <strong>Severity</strong>
+                            🔴 CRITICAL
+                        </div>
+                        <div class="metadata-item">
+                            <strong>Occurrences</strong>
+                            <span class="count-badge">7</span>
+                        </div>
+                        <div class="metadata-item">
+                            <strong>Affected Endpoints</strong>
+                            GET /persons/:personId/attributes
+                        </div>
+                        <div class="metadata-item">
+                            <strong>Root Cause</strong>
+                            Unhandled null reference
+                        </div>
+                    </div>
+
+                    <div class="bug-section">
+                        <h4>📋 Description</h4>
+                        <p>API mengembalikan <code class="code-inline">500 Internal Server Error</code> ketika seharusnya mengembalikan <code class="code-inline">404 Not Found</code> atau <code class="code-inline">400 Bad Request</code>. Ini mengindikasikan error tidak tertangani dengan baik di server.</p>
+                    </div>
+
+                    <div class="bug-section">
+                        <h4>🧪 Failing Test Cases</h4>
+                        <div class="test-cases">
+                            <ol>
+                                <li>GET /persons/00000000-0000-0000-0000-000000000000/attributes</li>
+                                <li>POST /persons/00000000-0000-0000-0000-000000000000/attributes</li>
+                                <li>GET /persons/550e8400-e29b-41d4-a716-446655440000/attributes (non-existent UUID)</li>
+                                <li>GET /persons/550e8400.../attributes?invalid=param (with query params)</li>
+                            </ol>
+                        </div>
+                    </div>
+
+                    <div class="bug-section">
+                        <h4>❌ Impact</h4>
+                        <ul class="impact-list">
+                            <li>Server mengalami crash/error yang tidak tertangani</li>
+                            <li>User mendapat error message yang tidak jelas dan tidak helpful</li>
+                            <li>Berpotensi menjadi security vulnerability (information disclosure)</li>
+                            <li>Server logs penuh dengan stack traces error 500</li>
+                            <li>Monitoring/alerting akan trigger false alarms</li>
+                        </ul>
+                    </div>
+
+                    <div class="bug-section">
+                        <h4>✅ Expected Behavior</h4>
+                        <div class="code-block">Status: 404 Not Found
+Content-Type: application/json
+
+{
+  "error": "Person not found",
+  "message": "Person with ID 00000000-0000-0000-0000-000000000000 does not exist"
+}</div>
+                    </div>
+
+                    <div class="bug-section">
+                        <h4>❌ Actual Behavior</h4>
+                        <div class="code-block">Status: 500 Internal Server Error
+Content-Type: application/json
+
+{
+  "error": "Internal Server Error",
+  "message": "An unexpected error occurred"
+}
+
+// Stack trace in logs:
+// panic: runtime error: invalid memory address or nil pointer dereference</div>
+                    </div>
+
+                    <div class="bug-section">
+                        <h4>🔧 Recommended Fix</h4>
+                        <div class="code-block">// In person_attributes.go - GetAllAttributes handler
+
+// Add null check for person
+person, err := db.GetPersonByID(personID)
+if err != nil || person == nil {
+    return c.JSON(404, map[string]string{
+        "error": "Person not found",
+        "message": fmt.Sprintf("Person with ID %s does not exist", personID),
+    })
+}</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- BUG 2 -->
+            <div class="bug">
+                <div class="bug-header medium">
+                    <div class="bug-title">BUG #2: Inconsistent Error Codes (400 vs 404)</div>
+                    <span class="severity-badge medium">MEDIUM</span>
+                </div>
+                <div class="bug-body">
+                    <div class="metadata">
+                        <div class="metadata-item">
+                            <strong>Severity</strong>
+                            🟡 MEDIUM
+                        </div>
+                        <div class="metadata-item">
+                            <strong>Occurrences</strong>
+                            <span class="count-badge" style="background: #ffa726;">12</span>
+                        </div>
+                        <div class="metadata-item">
+                            <strong>Affected Endpoints</strong>
+                            PUT, DELETE, GET /persons/.../attributes/...
+                        </div>
+                        <div class="metadata-item">
+                            <strong>Issue Type</strong>
+                            API Design Inconsistency
+                        </div>
+                    </div>
+
+                    <div class="bug-section">
+                        <h4>📋 Description</h4>
+                        <p>API mengembalikan <code class="code-inline">400 Bad Request</code> untuk resources yang tidak ditemukan, padahal seharusnya mengembalikan <code class="code-inline">404 Not Found</code>. Ini melanggar REST API best practices.</p>
+                    </div>
+
+                    <div class="bug-section">
+                        <h4>🧪 Failing Test Cases</h4>
+                        <div class="test-cases">
+                            <ol>
+                                <li>PUT /persons/00000000-0000-0000-0000-000000000000/attributes/{id} → Returns 400</li>
+                                <li>DELETE /persons/00000000-0000-0000-0000-000000000000/attributes/{id} → Returns 400</li>
+                                <li>GET /persons/{id}/attributes/00000000-0000-0000-0000-000000000000 → Returns 400</li>
+                                <li>DELETE /persons/{testPersonId}/attributes/00000000-0000-0000-0000-000000000000 → Returns 400</li>
+                            </ol>
+                        </div>
+                    </div>
+
+                    <div class="bug-section">
+                        <h4>❌ Impact</h4>
+                        <ul class="impact-list">
+                            <li>Client tidak bisa membedakan antara "invalid input" dan "resource not found"</li>
+                            <li>Tidak konsisten dengan REST API best practices</li>
+                            <li>Membuat debugging lebih sulit untuk client developers</li>
+                            <li>Error handling di client menjadi lebih complex</li>
+                        </ul>
+                    </div>
+
+                    <div class="bug-section">
+                        <h4>📚 HTTP Status Code Guidelines</h4>
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Status Code</th>
+                                    <th>When to Use</th>
+                                    <th>Example</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td><strong>400 Bad Request</strong></td>
+                                    <td>Request format/validation error</td>
+                                    <td>Missing required field, invalid data type</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>404 Not Found</strong></td>
+                                    <td>Resource doesn't exist</td>
+                                    <td>Person ID or Attribute ID not in database</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- BUG 3 -->
+            <div class="bug">
+                <div class="bug-header medium">
+                    <div class="bug-title">BUG #3: Whitespace-Only Values Accepted</div>
+                    <span class="severity-badge medium">MEDIUM</span>
+                </div>
+                <div class="bug-body">
+                    <div class="metadata">
+                        <div class="metadata-item">
+                            <strong>Severity</strong>
+                            🟡 MEDIUM
+                        </div>
+                        <div class="metadata-item">
+                            <strong>Occurrences</strong>
+                            <span class="count-badge" style="background: #ffa726;">2</span>
+                        </div>
+                        <div class="metadata-item">
+                            <strong>Affected Endpoints</strong>
+                            POST /api/key-value, POST /persons/.../attributes
+                        </div>
+                        <div class="metadata-item">
+                            <strong>Issue Type</strong>
+                            Input Validation Missing
+                        </div>
+                    </div>
+
+                    <div class="bug-section">
+                        <h4>📋 Description</h4>
+                        <p>API menerima string yang hanya berisi whitespace (spasi, tab, newline) sebagai value yang valid. Ini menyebabkan data "kotor" tersimpan di database.</p>
+                    </div>
+
+                    <div class="bug-section">
+                        <h4>🧪 Test Case Examples</h4>
+                        <div class="code-block">// Test 1: Key-Value API
+POST /api/key-value
+{
+  "key": "   ",      // 3 spaces
+  "value": "test"
+}
+Result: 201 Created ❌ (seharusnya 400)
+
+// Test 2: Person Attributes API
+POST /persons/{id}/attributes
+{
+  "key": "   ",      // whitespace only
+  "value": "test",
+  "meta": {...}
+}
+Result: 201 Created ❌ (seharusnya 400)</div>
+                    </div>
+
+                    <div class="bug-section">
+                        <h4>❌ Impact</h4>
+                        <ul class="impact-list">
+                            <li>Data kotor (dirty data) masuk ke database</li>
+                            <li>Whitespace akan disimpan sebagai key yang valid</li>
+                            <li>Sulit untuk search, query, atau filter data</li>
+                            <li>Bisa menyebabkan collision dengan data valid lainnya</li>
+                            <li>Database performance menurun karena data tidak optimal</li>
+                        </ul>
+                    </div>
+
+                    <div class="bug-section">
+                        <h4>🔧 Recommended Fix</h4>
+                        <div class="code-block">// Add validation function
+func validateKey(key string) error {
+    // Trim whitespace
+    trimmedKey := strings.TrimSpace(key)
+    
+    // Check if empty after trim
+    if trimmedKey == "" {
+        return errors.New("Key cannot be empty or whitespace only")
+    }
+    
+    return nil
+}
+
+// Use in handler
+if err := validateKey(request.Key); err != nil {
+    return c.JSON(400, map[string]string{
+        "error": "Validation failed",
+        "message": err.Error(),
+    })
+}</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- BUG 4 -->
+            <div class="bug">
+                <div class="bug-header medium">
+                    <div class="bug-title">BUG #4: Empty Meta Object Accepted</div>
+                    <span class="severity-badge medium">MEDIUM</span>
+                </div>
+                <div class="bug-body">
+                    <div class="metadata">
+                        <div class="metadata-item">
+                            <strong>Severity</strong>
+                            🟡 MEDIUM
+                        </div>
+                        <div class="metadata-item">
+                            <strong>Occurrences</strong>
+                            <span class="count-badge" style="background: #ffa726;">1</span>
+                        </div>
+                        <div class="metadata-item">
+                            <strong>Affected Endpoints</strong>
+                            POST /persons/:personId/attributes
+                        </div>
+                        <div class="metadata-item">
+                            <strong>Issue Type</strong>
+                            Business Logic Validation
+                        </div>
+                    </div>
+
+                    <div class="bug-section">
+                        <h4>📋 Description</h4>
+                        <p>API menerima <code class="code-inline">meta: {}</code> (empty object) ketika seharusnya meta object harus berisi <code class="code-inline">caller</code>, <code class="code-inline">reason</code>, dan <code class="code-inline">traceId</code> untuk audit trail purposes.</p>
+                    </div>
+
+                    <div class="bug-section">
+                        <h4>🧪 Test Case</h4>
+                        <div class="code-block">POST /persons/{personId}/attributes
+{
+  "key": "email",
+  "value": "test@example.com",
+  "meta": {}  // EMPTY - missing caller, reason, traceId
+}
+
+Expected: 400 Bad Request
+Actual: 201 Created ❌</div>
+                    </div>
+
+                    <div class="bug-section">
+                        <h4>❌ Impact</h4>
+                        <ul class="impact-list">
+                            <li>Audit trail tidak lengkap (missing caller, reason, traceId)</li>
+                            <li>Sulit untuk tracking siapa yang membuat perubahan</li>
+                            <li>Compliance issues (GDPR, audit requirements)</li>
+                            <li>Debugging menjadi lebih sulit tanpa trace information</li>
+                        </ul>
+                    </div>
+
+                    <div class="bug-section">
+                        <h4>🔧 Recommended Fix</h4>
+                        <div class="code-block">// Validate meta object
+if request.Meta.Caller == "" || request.Meta.Reason == "" || request.Meta.TraceID == "" {
+    return c.JSON(400, map[string]string{
+        "error": "Invalid meta object",
+        "message": "Meta object must contain caller, reason, and traceId fields",
+    })
+}</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- BUG 5 -->
+            <div class="bug">
+                <div class="bug-header high">
+                    <div class="bug-title">BUG #5: Long Input Causes 500 Error</div>
+                    <span class="severity-badge high">HIGH</span>
+                </div>
+                <div class="bug-body">
+                    <div class="metadata">
+                        <div class="metadata-item">
+                            <strong>Severity</strong>
+                            🟠 HIGH
+                        </div>
+                        <div class="metadata-item">
+                            <strong>Occurrences</strong>
+                            <span class="count-badge" style="background: #f57c00;">3</span>
+                        </div>
+                        <div class="metadata-item">
+                            <strong>Affected Endpoints</strong>
+                            POST /api/key-value, GET /api/key-value/:key
+                        </div>
+                        <div class="metadata-item">
+                            <strong>Attack Vector</strong>
+                            Potential DoS
+                        </div>
+                    </div>
+
+                    <div class="bug-section">
+                        <h4>📋 Description</h4>
+                        <p>Input yang sangat panjang (10KB key, 1MB value, 2000 char URL) menyebabkan <strong>500 Internal Server Error</strong> instead of proper validation error. Ini bisa dieksploitasi untuk DoS attack.</p>
+                    </div>
+
+                    <div class="bug-section">
+                        <h4>🧪 Failing Test Cases</h4>
+                        <div class="test-cases">
+                            <ol>
+                                <li>POST /api/key-value with 10KB key → 500 Error</li>
+                                <li>POST /api/key-value with 1MB value → 500 Error</li>
+                                <li>GET /api/key-value/{2000-char-key} → 500 Error</li>
+                            </ol>
+                        </div>
+                    </div>
+
+                    <div class="bug-section">
+                        <h4>❌ Impact</h4>
+                        <ul class="impact-list">
+                            <li><strong>Security Risk:</strong> Bisa digunakan untuk DoS attack</li>
+                            <li>Server crash saat memproses input yang sangat besar</li>
+                            <li>Memory consumption meningkat drastis</li>
+                            <li>Database bisa overflow dengan data besar</li>
+                            <li>Response time sangat lambat untuk request berikutnya</li>
+                        </ul>
+                    </div>
+
+                    <div class="bug-section">
+                        <h4>🔧 Recommended Fix</h4>
+                        <div class="code-block">// Add length validation
+const (
+    MAX_KEY_LENGTH   = 1000   // 1KB max
+    MAX_VALUE_LENGTH = 100000 // 100KB max
+)
+
+// Validate before processing
+if len(request.Key) > MAX_KEY_LENGTH {
+    return c.JSON(400, map[string]string{
+        "error": "Key too long",
+        "message": fmt.Sprintf("Key length exceeds maximum of %d characters", MAX_KEY_LENGTH),
+    })
+}
+
+if len(request.Value) > MAX_VALUE_LENGTH {
+    return c.JSON(413, map[string]string{
+        "error": "Payload too large",
+        "message": fmt.Sprintf("Value length exceeds maximum of %d characters", MAX_VALUE_LENGTH),
+    })
+}</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- BUG 6 -->
+            <div class="bug">
+                <div class="bug-header low">
+                    <div class="bug-title">BUG #6: Error Message Case Inconsistency</div>
+                    <span class="severity-badge low">LOW</span>
+                </div>
+                <div class="bug-body">
+                    <div class="metadata">
+                        <div class="metadata-item">
+                            <strong>Severity</strong>
+                            🟢 LOW
+                        </div>
+                        <div class="metadata-item">
+                            <strong>Occurrences</strong>
+                            <span class="count-badge" style="background: #66bb6a;">1</span>
+                        </div>
+                        <div class="metadata-item">
+                            <strong>Issue Type</strong>
+                            Code Quality / Consistency
+                        </div>
+                    </div>
+
+                    <div class="bug-section">
+                        <h4>📋 Description</h4>
+                        <p>Error message menggunakan "Key" (capital K) tapi test expected "key" (lowercase k). Minor inconsistency dalam naming convention.</p>
+                    </div>
+
+                    <div class="bug-section">
+                        <h4>🧪 Example</h4>
+                        <div class="code-block">Request: POST /api/key-value { value: "test" }  // missing key
+
+Expected message: "key is required"
+Actual message: "Key is required"
+
+// Mismatch pada kapitalisasi</div>
+                    </div>
+
+                    <div class="bug-section">
+                        <h4>🔧 Recommendation</h4>
+                        <p>Standardize error messages to use lowercase field names for consistency with JSON field names.</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SUMMARY TABLE -->
+            <h2 style="margin: 50px 0 30px 0; color: #333;">📊 Bug Summary Table</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Bug #</th>
+                        <th>Title</th>
+                        <th>Severity</th>
+                        <th>Count</th>
+                        <th>Priority</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>1</td>
+                        <td>Server Crash (500 Error)</td>
+                        <td><span class="severity-badge critical">CRITICAL</span></td>
+                        <td>7</td>
+                        <td>🔴 P0 - Fix Immediately</td>
+                    </tr>
+                    <tr>
+                        <td>5</td>
+                        <td>Long Input Causes 500 Error</td>
+                        <td><span class="severity-badge high">HIGH</span></td>
+                        <td>3</td>
+                        <td>🟠 P1 - This Week</td>
+                    </tr>
+                    <tr>
+                        <td>2</td>
+                        <td>Inconsistent Error Codes</td>
+                        <td><span class="severity-badge medium">MEDIUM</span></td>
+                        <td>12</td>
+                        <td>🟡 P2 - Next Sprint</td>
+                    </tr>
+                    <tr>
+                        <td>3</td>
+                        <td>Whitespace Values Accepted</td>
+                        <td><span class="severity-badge medium">MEDIUM</span></td>
+                        <td>2</td>
+                        <td>🟡 P2 - Next Sprint</td>
+                    </tr>
+                    <tr>
+                        <td>4</td>
+                        <td>Empty Meta Object Accepted</td>
+                        <td><span class="severity-badge medium">MEDIUM</span></td>
+                        <td>1</td>
+                        <td>🟡 P2 - Next Sprint</td>
+                    </tr>
+                    <tr>
+                        <td>6</td>
+                        <td>Error Message Inconsistency</td>
+                        <td><span class="severity-badge low">LOW</span></td>
+                        <td>1</td>
+                        <td>🟢 P3 - Backlog</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <!-- RECOMMENDATIONS -->
+            <div class="recommendations">
+                <h3>💡 Recommendations & Action Items</h3>
+                
+                <h4 style="margin-top: 20px;">Priority 0: Critical - Fix Immediately</h4>
+                <ul>
+                    <li><strong>Bug #1:</strong> Add proper null checks and error handling for non-existent resources</li>
+                    <li>Add integration tests for error handling before production deployment</li>
+                    <li>Review all endpoints for similar null pointer issues</li>
+                </ul>
+
+                <h4 style="margin-top: 20px;">Priority 1: High - This Week</h4>
+                <ul>
+                    <li><strong>Bug #5:</strong> Implement input length validation across all endpoints</li>
+                    <li>Add request size limits at middleware level</li>
+                    <li>Consider adding rate limiting to prevent DoS attacks</li>
+                </ul>
+
+                <h4 style="margin-top: 20px;">Priority 2: Medium - Next Sprint</h4>
+                <ul>
+                    <li><strong>Bug #2:</strong> Standardize HTTP status codes according to REST best practices</li>
+                    <li><strong>Bug #3:</strong> Add whitespace trimming and validation for all string inputs</li>
+                    <li><strong>Bug #4:</strong> Enforce meta object structure validation</li>
+                    <li>Create API design guidelines document</li>
+                </ul>
+
+                <h4 style="margin-top: 20px;">Priority 3: Low - Backlog</h4>
+                <ul>
+                    <li><strong>Bug #6:</strong> Standardize error message formatting</li>
+                    <li>Create error message templates</li>
+                </ul>
+
+                <h4 style="margin-top: 20px;">General Improvements</h4>
+                <ul>
+                    <li>Add comprehensive input validation middleware</li>
+                    <li>Improve error logging with structured logging</li>
+                    <li>Add monitoring/alerting for 500 errors</li>
+                    <li>Run negative tests in CI/CD pipeline</li>
+                    <li>Schedule regular security audits</li>
+                </ul>
+            </div>
+
+            <!-- TEST RESULTS -->
+            <h2 style="margin: 50px 0 30px 0; color: #333;">📈 Test Results Overview</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Test Suite</th>
+                        <th>Total Tests</th>
+                        <th>Passed</th>
+                        <th>Failed</th>
+                        <th>Pass Rate</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>POST /persons/:personId/attributes</td>
+                        <td>22</td>
+                        <td>18</td>
+                        <td>4</td>
+                        <td>82%</td>
+                    </tr>
+                    <tr>
+                        <td>PUT /persons/:personId/attributes/:attributeId</td>
+                        <td>20</td>
+                        <td>18</td>
+                        <td>2</td>
+                        <td>90%</td>
+                    </tr>
+                    <tr>
+                        <td>DELETE /persons/:personId/attributes/:attributeId</td>
+                        <td>18</td>
+                        <td>12</td>
+                        <td>6</td>
+                        <td>67%</td>
+                    </tr>
+                    <tr>
+                        <td>POST /api/key-value</td>
+                        <td>18</td>
+                        <td>15</td>
+                        <td>3</td>
+                        <td>83%</td>
+                    </tr>
+                    <tr>
+                        <td>GET /api/key-value/:key</td>
+                        <td>14</td>
+                        <td>13</td>
+                        <td>1</td>
+                        <td>93%</td>
+                    </tr>
+                    <tr>
+                        <td>DELETE /api/key-value/:key</td>
+                        <td>15</td>
+                        <td>15</td>
+                        <td>0</td>
+                        <td>100%</td>
+                    </tr>
+                    <tr>
+                        <td>GET /persons/:personId/attributes/:attributeId</td>
+                        <td>16</td>
+                        <td>12</td>
+                        <td>4</td>
+                        <td>75%</td>
+                    </tr>
+                    <tr>
+                        <td>GET /persons/:personId/attributes</td>
+                        <td>12</td>
+                        <td>8</td>
+                        <td>4</td>
+                        <td>67%</td>
+                    </tr>
+                    <tr>
+                        <td>GET /health</td>
+                        <td>5</td>
+                        <td>5</td>
+                        <td>0</td>
+                        <td>100%</td>
+                    </tr>
+                    <tr style="background: #f5f5f5; font-weight: bold;">
+                        <td>TOTAL</td>
+                        <td>149</td>
+                        <td>125</td>
+                        <td>24</td>
+                        <td>84%</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <footer>
+            <p><strong>Person Service API - Negative Test Results</strong></p>
+            <p style="margin-top: 10px;">Generated: January 21, 2026</p>
+            <p style="margin-top: 10px;">Test Framework: Jest + Axios</p>
+            <p style="margin-top: 10px;">Total Test Files: 9 | Total Test Cases: 149</p>
+            <p style="margin-top: 20px; color: #999;">⚠️ This report should be reviewed by the development team and bugs should be prioritized for fixing.</p>
+        </footer>
+    </div>
+</body>
+</html>

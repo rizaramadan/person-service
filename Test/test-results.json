@@ -1,0 +1,137 @@
+{
+  "numFailedTestSuites": 0,
+  "numFailedTests": 0,
+  "numPassedTestSuites": 1,
+  "numPassedTests": 5,
+  "numPendingTestSuites": 0,
+  "numPendingTests": 0,
+  "numRuntimeErrorTestSuites": 0,
+  "numTodoTests": 0,
+  "numTotalTestSuites": 1,
+  "numTotalTests": 5,
+  "openHandles": [],
+  "snapshot": {
+    "added": 0,
+    "didUpdate": false,
+    "failure": false,
+    "filesAdded": 0,
+    "filesRemoved": 0,
+    "filesRemovedList": [],
+    "filesUnmatched": 0,
+    "filesUpdated": 0,
+    "matched": 0,
+    "total": 0,
+    "unchecked": 0,
+    "uncheckedKeysByFile": [],
+    "unmatched": 0,
+    "updated": 0
+  },
+  "startTime": 1768930226109,
+  "success": false,
+  "testResults": [
+    {
+      "leaks": false,
+      "numFailingTests": 0,
+      "numPassingTests": 5,
+      "numPendingTests": 0,
+      "numTodoTests": 0,
+      "openHandles": [],
+      "perfStats": {
+        "end": 1768930226844,
+        "runtime": 641,
+        "slow": false,
+        "start": 1768930226203
+      },
+      "skipped": false,
+      "snapshot": {
+        "added": 0,
+        "fileDeleted": false,
+        "matched": 0,
+        "unchecked": 0,
+        "uncheckedKeys": [],
+        "unmatched": 0,
+        "updated": 0
+      },
+      "testFilePath": "C:\\RepoGit\\person-service - v2\\Test\\API_Tests\\negative_tests\\GET_health_negative.test.js",
+      "testResults": [
+        {
+          "ancestorTitles": [
+            "NEGATIVE: GET /health - Health Check Endpoint"
+          ],
+          "duration": 56,
+          "failureDetails": [],
+          "failureMessages": [],
+          "fullName": "NEGATIVE: GET /health - Health Check Endpoint Should handle invalid HTTP method (POST instead of GET)",
+          "invocations": 1,
+          "location": null,
+          "numPassingAsserts": 1,
+          "retryReasons": [],
+          "status": "passed",
+          "title": "Should handle invalid HTTP method (POST instead of GET)"
+        },
+        {
+          "ancestorTitles": [
+            "NEGATIVE: GET /health - Health Check Endpoint"
+          ],
+          "duration": 3,
+          "failureDetails": [],
+          "failureMessages": [],
+          "fullName": "NEGATIVE: GET /health - Health Check Endpoint Should handle invalid path (/healths instead of /health)",
+          "invocations": 1,
+          "location": null,
+          "numPassingAsserts": 1,
+          "retryReasons": [],
+          "status": "passed",
+          "title": "Should handle invalid path (/healths instead of /health)"
+        },
+        {
+          "ancestorTitles": [
+            "NEGATIVE: GET /health - Health Check Endpoint"
+          ],
+          "duration": 5,
+          "failureDetails": [],
+          "failureMessages": [],
+          "fullName": "NEGATIVE: GET /health - Health Check Endpoint Should handle path with query parameters",
+          "invocations": 1,
+          "location": null,
+          "numPassingAsserts": 1,
+          "retryReasons": [],
+          "status": "passed",
+          "title": "Should handle path with query parameters"
+        },
+        {
+          "ancestorTitles": [
+            "NEGATIVE: GET /health - Health Check Endpoint"
+          ],
+          "duration": 2,
+          "failureDetails": [],
+          "failureMessages": [],
+          "fullName": "NEGATIVE: GET /health - Health Check Endpoint Should handle excessive request timeout",
+          "invocations": 1,
+          "location": null,
+          "numPassingAsserts": 1,
+          "retryReasons": [],
+          "status": "passed",
+          "title": "Should handle excessive request timeout"
+        },
+        {
+          "ancestorTitles": [
+            "NEGATIVE: GET /health - Health Check Endpoint"
+          ],
+          "duration": 2,
+          "failureDetails": [],
+          "failureMessages": [],
+          "fullName": "NEGATIVE: GET /health - Health Check Endpoint Should handle malformed Accept header",
+          "invocations": 1,
+          "location": null,
+          "numPassingAsserts": 1,
+          "retryReasons": [],
+          "status": "passed",
+          "title": "Should handle malformed Accept header"
+        }
+      ],
+      "failureMessage": null
+    }
+  ],
+  "wasInterrupted": false
+}

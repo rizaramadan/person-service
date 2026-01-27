@@ -1,0 +1,455 @@
+/**
+ * Database Verification Step Definitions - EXAMPLE
+ * 
+ * This shows exactly HOW database verification is implemented
+ * to ensure API data is actually stored in PostgreSQL database
+ */
+
+import { defineFeature, loadFeature } from 'jest-cucumber';
+import { expect } from '@jest/globals';
+import axios from 'axios';
+import pg from 'pg';
+const { Client } = pg;
+
+const feature = loadFeature('./Gherkin_features/database_verification.feature');
+
+// ============================================================================
+// DATABASE CONNECTION
+// ============================================================================
+
+let dbClient;
+let apiResponse;
+let extractedIds = {};
+
+async function connectDatabase() {
+  dbClient = new Client({
+    host: process.env.DB_HOST || 'localhost',
+    port: parseInt(process.env.DB_PORT || '5432'),
+    database: process.env.DB_NAME || 'person_service',
+    user: process.env.DB_USER || 'postgres',
+    password: process.env.DB_PASSWORD,
+  });
+  await dbClient.connect();
+  console.log('✅ Connected to database for verification');
+}
+
+async function closeDatabase() {
+  if (dbClient) {
+    await dbClient.end();
+    console.log('✅ Closed database connection');
+  }
+}
+
+// ============================================================================
+// EXAMPLE: POST /api/person - Verify data is stored in database
+// ============================================================================
+
+defineFeature(feature, (test) => {
+  
+  beforeAll(async () => {
+    await connectDatabase();
+  });
+
+  afterAll(async () => {
+    await closeDatabase();
+  });
+
+  test('POST /api/person - Verify person data is stored in database', ({ given, when, then, and }) => {
+    let testData;
+    let personId;
+    
+    given('I prepare test data:', (dataTable) => {
+      testData = {
+        client_id: dataTable[0].value
+      };
+      console.log('📝 Prepared test data:', testData);
+    });
+    
+    when('I send POST request to "/api/person" with prepared data', async () => {
+      console.log('🔵 Sending POST request to API...');
+      
+      // STEP 1: Send API request
+      apiResponse = await axios.post(
+        `${process.env.BASE_URL}/api/person`,
+        testData,
+        {
+          headers: {
+            'Authorization': `Bearer ${process.env.AUTH_TOKEN}`,
+            'Content-Type': 'application/json'
+          }
+        }
+      );
+      
+      console.log('✅ API Response:', {
+        status: apiResponse.status,
+        data: apiResponse.data
+      });
+    });
+    
+    then('response status code should be 201', () => {
+      expect(apiResponse.status).toBe(201);
+    });
+    
+    and('response body should contain "id" as UUID', () => {
+      expect(apiResponse.data).toHaveProperty('id');
+      expect(apiResponse.data.id).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i);
+    });
+    
+    and('I extract person_id from response', () => {
+      personId = apiResponse.data.id;
+      extractedIds.person_id = personId;
+      console.log(`📌 Extracted person_id: ${personId}`);
+    });
+    
+    // ========================================================================
+    // 🔍 DATABASE VERIFICATION - THIS IS THE KEY PART!
+    // ========================================================================
+    
+    when('I query database: "SELECT * FROM person WHERE id = {person_id}"', async () => {
+      console.log('\n🔍 QUERYING DATABASE TO VERIFY DATA...');
+      
+      // STEP 2: Query database directly
+      const query = `
+        SELECT 
+          id,
+          client_id,
+          created_at,
+          updated_at,
+          deleted_at
+        FROM person 
+        WHERE id = $1
+      `;
+      
+      const result = await dbClient.query(query, [personId]);
+      
+      console.log('📊 Database query result:', {
+        rowCount: result.rowCount,
+        rows: result.rows
+      });
+      
+      // Store database record for comparison
+      extractedIds.dbRecord = result.rows[0];
+    });
+    
+    then('database should return exactly 1 row', () => {
+      expect(extractedIds.dbRecord).toBeDefined();
+      console.log('✅ Database returned record');
+    });
+    
+    and('database row should contain:', (dataTable) => {
+      const dbRecord = extractedIds.dbRecord;
+      
+      console.log('\n🔍 VERIFYING DATABASE FIELDS:');
+      
+      dataTable.forEach(row => {
+        const column = row.column;
+        const expectedValue = row.value;
+        const expectedType = row.type;
+        
+        console.log(`\n  Checking: ${column}`);
+        console.log(`    Expected: ${expectedValue} (${expectedType})`);
+        console.log(`    Actual: ${dbRecord[column]}`);
+        
+        // Verify column exists
+        expect(dbRecord).toHaveProperty(column);
+        
+        // Verify value
+        if (expectedValue === '{person_id}') {
+          expect(dbRecord[column]).toBe(personId);
+          console.log(`    ✅ Matches person_id`);
+        } else if (expectedValue === 'NOT NULL') {
+          expect(dbRecord[column]).not.toBeNull();
+          console.log(`    ✅ Is NOT NULL`);
+        } else if (expectedValue === 'NULL') {
+          expect(dbRecord[column]).toBeNull();
+          console.log(`    ✅ Is NULL`);
+        } else {
+          expect(dbRecord[column]).toBe(expectedValue);
+          console.log(`    ✅ Matches expected value`);
+        }
+        
+        // Verify type
+        if (expectedType === 'UUID') {
+          expect(dbRecord[column]).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i);
+          console.log(`    ✅ Is valid UUID`);
+        } else if (expectedType === 'TIMESTAMP') {
+          expect(dbRecord[column]).toBeInstanceOf(Date);
+          console.log(`    ✅ Is valid timestamp`);
+        }
+      });
+      
+      console.log('\n✅ All database fields verified!');
+    });
+    
+    // ========================================================================
+    // ✅ FINAL VERIFICATION: API response matches database
+    // ========================================================================
+    
+    and('API response.id should equal database.id', () => {
+      console.log('\n🔍 COMPARING API RESPONSE WITH DATABASE:');
+      console.log(`  API id: ${apiResponse.data.id}`);
+      console.log(`  DB id:  ${extractedIds.dbRecord.id}`);
+      
+      expect(apiResponse.data.id).toBe(extractedIds.dbRecord.id);
+      console.log('  ✅ IDs match!');
+    });
+    
+    and('API response.client_id should equal database.client_id', () => {
+      console.log(`  API client_id: ${apiResponse.data.client_id}`);
+      console.log(`  DB client_id:  ${extractedIds.dbRecord.client_id}`);
+      
+      expect(apiResponse.data.client_id).toBe(extractedIds.dbRecord.client_id);
+      console.log('  ✅ client_ids match!');
+    });
+    
+    and('API response.created_at should equal database.created_at', () => {
+      const apiCreatedAt = new Date(apiResponse.data.created_at);
+      const dbCreatedAt = extractedIds.dbRecord.created_at;
+      
+      console.log(`  API created_at: ${apiCreatedAt.toISOString()}`);
+      console.log(`  DB created_at:  ${dbCreatedAt.toISOString()}`);
+      
+      expect(apiCreatedAt.getTime()).toBe(dbCreatedAt.getTime());
+      console.log('  ✅ Timestamps match!');
+      
+      console.log('\n🎉 API RESPONSE MATCHES DATABASE PERFECTLY!');
+    });
+  });
+
+  // ==========================================================================
+  // EXAMPLE: Verify encrypted attribute is stored
+  // ==========================================================================
+  
+  test('POST /api/person/{id}/attributes - Verify encrypted attribute is stored', ({ given, when, then, and }) => {
+    let personId = '550e8400-e29b-41d4-a716-446655440002';
+    let attributeId;
+    let attributeData = {
+      key: 'email',
+      value: 'john.doe@example.com'
+    };
+    
+    given('person exists with id "550e8400-e29b-41d4-a716-446655440002"', async () => {
+      // Assume person exists or create one
+      console.log(`📝 Using person_id: ${personId}`);
+    });
+    
+    when('I send POST request to "/api/person/550e8400-e29b-41d4-a716-446655440002/attributes"', async () => {
+      console.log('🔵 Sending POST request to add attribute...');
+      
+      apiResponse = await axios.post(
+        `${process.env.BASE_URL}/api/person/${personId}/attributes`,
+        attributeData,
+        {
+          headers: {
+            'Authorization': `Bearer ${process.env.AUTH_TOKEN}`,
+            'Content-Type': 'application/json'
+          }
+        }
+      );
+      
+      console.log('✅ API Response:', apiResponse.data);
+    });
+    
+    and('I extract attribute_id from response', () => {
+      attributeId = apiResponse.data.id;
+      console.log(`📌 Extracted attribute_id: ${attributeId}`);
+    });
+    
+    // ========================================================================
+    // 🔍 DATABASE VERIFICATION - Check encryption!
+    // ========================================================================
+    
+    when(/I query database:/, async (sqlQuery) => {
+      console.log('\n🔍 QUERYING DATABASE TO VERIFY ENCRYPTED ATTRIBUTE...');
+      
+      const query = `
+        SELECT 
+          id,
+          person_id,
+          attribute_key,
+          encrypted_value,
+          key_version,
+          created_at,
+          updated_at
+        FROM person_attributes 
+        WHERE id = $1
+      `;
+      
+      const result = await dbClient.query(query, [attributeId]);
+      extractedIds.dbRecord = result.rows[0];
+      
+      console.log('📊 Database record:', {
+        id: extractedIds.dbRecord.id,
+        person_id: extractedIds.dbRecord.person_id,
+        attribute_key: extractedIds.dbRecord.attribute_key,
+        encrypted_value_type: typeof extractedIds.dbRecord.encrypted_value,
+        encrypted_value_length: extractedIds.dbRecord.encrypted_value?.length,
+        key_version: extractedIds.dbRecord.key_version
+      });
+    });
+    
+    // ========================================================================
+    // 🔍 CRITICAL: Verify data is ENCRYPTED
+    // ========================================================================
+    
+    and('database.encrypted_value should be BYTEA type', () => {
+      console.log('\n🔍 VERIFYING ENCRYPTION:');
+      
+      const encryptedValue = extractedIds.dbRecord.encrypted_value;
+      
+      // BYTEA is returned as Buffer in Node.js
+      expect(Buffer.isBuffer(encryptedValue)).toBe(true);
+      
+      console.log('  ✅ encrypted_value is Buffer (BYTEA type)');
+      console.log(`  ✅ Buffer length: ${encryptedValue.length} bytes`);
+    });
+    
+    and('database.encrypted_value should NOT contain plain text "john.doe@example.com"', () => {
+      const encryptedValue = extractedIds.dbRecord.encrypted_value;
+      const plainText = 'john.doe@example.com';
+      
+      // Convert buffer to string and check if it contains plain text
+      const bufferString = encryptedValue.toString('utf8');
+      const containsPlainText = bufferString.includes(plainText);
+      
+      expect(containsPlainText).toBe(false);
+      
+      console.log(`  ✅ Encrypted value does NOT contain plain text "${plainText}"`);
+      console.log(`  ✅ Data is properly encrypted in database!`);
+    });
+    
+    and('database.encrypted_value should be encrypted binary data', () => {
+      const encryptedValue = extractedIds.dbRecord.encrypted_value;
+      
+      // Check that it's binary data (not human-readable)
+      expect(Buffer.isBuffer(encryptedValue)).toBe(true);
+      expect(encryptedValue.length).toBeGreaterThan(0);
+      
+      console.log('  ✅ Data is encrypted binary (BYTEA)');
+    });
+    
+    // ========================================================================
+    // 🔍 VERIFY: Decryption returns original value
+    // ========================================================================
+    
+    when('I query database:', async (sqlQuery) => {
+      console.log('\n🔍 TESTING DECRYPTION WITH pgp_sym_decrypt...');
+      
+      const encryptionKey = process.env.ENCRYPTION_KEY || 'test-encryption-key-12345';
+      
+      const query = `
+        SELECT 
+          pgp_sym_decrypt(encrypted_value, $1) AS decrypted_value
+        FROM person_attributes
+        WHERE id = $2
+      `;
+      
+      const result = await dbClient.query(query, [encryptionKey, attributeId]);
+      extractedIds.decryptedValue = result.rows[0].decrypted_value.toString();
+      
+      console.log('📊 Decryption result:', extractedIds.decryptedValue);
+    });
+    
+    then('database.decrypted_value should equal "john.doe@example.com"', () => {
+      const decrypted = extractedIds.decryptedValue;
+      const expected = 'john.doe@example.com';
+      
+      console.log(`  Decrypted: ${decrypted}`);
+      console.log(`  Expected:  ${expected}`);
+      
+      expect(decrypted).toBe(expected);
+      
+      console.log('  ✅ Decryption successful!');
+      console.log('  ✅ Original data can be retrieved!');
+      
+      console.log('\n🎉 ENCRYPTION VERIFICATION COMPLETE:');
+      console.log('  ✅ Data is stored as encrypted BYTEA');
+      console.log('  ✅ Plain text is NOT visible in database');
+      console.log('  ✅ Decryption returns original value');
+    });
+  });
+});
+
+// ============================================================================
+// EXAMPLE OUTPUT:
+// ============================================================================
+
+/*
+
+EXPECTED CONSOLE OUTPUT:
+
+✅ Connected to database for verification
+
+📝 Prepared test data: { client_id: 'test-client-001' }
+
+🔵 Sending POST request to API...
+✅ API Response: {
+  status: 201,
+  data: {
+    id: '550e8400-e29b-41d4-a716-446655440000',
+    client_id: 'test-client-001',
+    created_at: '2026-01-19T23:50:00.000Z',
+    updated_at: '2026-01-19T23:50:00.000Z'
+  }
+}
+
+📌 Extracted person_id: 550e8400-e29b-41d4-a716-446655440000
+
+🔍 QUERYING DATABASE TO VERIFY DATA...
+📊 Database query result: {
+  rowCount: 1,
+  rows: [{
+    id: '550e8400-e29b-41d4-a716-446655440000',
+    client_id: 'test-client-001',
+    created_at: 2026-01-19T23:50:00.000Z,
+    updated_at: 2026-01-19T23:50:00.000Z,
+    deleted_at: null
+  }]
+}
+
+✅ Database returned record
+
+🔍 VERIFYING DATABASE FIELDS:
+
+  Checking: id
+    Expected: {person_id} (UUID)
+    Actual: 550e8400-e29b-41d4-a716-446655440000
+    ✅ Matches person_id
+    ✅ Is valid UUID
+
+  Checking: client_id
+    Expected: test-client-001 (VARCHAR)
+    Actual: test-client-001
+    ✅ Matches expected value
+
+  Checking: created_at
+    Expected: NOT NULL (TIMESTAMP)
+    Actual: 2026-01-19T23:50:00.000Z
+    ✅ Is NOT NULL
+    ✅ Is valid timestamp
+
+  Checking: deleted_at
+    Expected: NULL (TIMESTAMP)
+    Actual: null
+    ✅ Is NULL
+
+✅ All database fields verified!
+
+🔍 COMPARING API RESPONSE WITH DATABASE:
+  API id: 550e8400-e29b-41d4-a716-446655440000
+  DB id:  550e8400-e29b-41d4-a716-446655440000
+  ✅ IDs match!
+  
+  API client_id: test-client-001
+  DB client_id:  test-client-001
+  ✅ client_ids match!
+  
+  API created_at: 2026-01-19T23:50:00.000Z
+  DB created_at:  2026-01-19T23:50:00.000Z
+  ✅ Timestamps match!
+
+🎉 API RESPONSE MATCHES DATABASE PERFECTLY!
+
+✅ Test passed
+
+*/

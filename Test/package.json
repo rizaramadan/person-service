@@ -1,0 +1,51 @@
+{
+  "name": "person-service-api-tests",
+  "version": "1.0.0",
+  "description": "Automated testing suite for Person Service API with database verification",
+  "type": "module",
+  "main": "index.js",
+  "scripts": {
+    "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js --runInBand",
+    "test:api": "node --experimental-vm-modules node_modules/jest/bin/jest.js API_Tests/tests --runInBand",
+    "test:comprehensive": "node --experimental-vm-modules node_modules/jest/bin/jest.js API_Tests/comprehensive_tests --runInBand",
+    "test:spec": "node --experimental-vm-modules node_modules/jest/bin/jest.js API_Tests/specification_tests --runInBand",
+    "test:negative": "node --experimental-vm-modules node_modules/jest/bin/jest.js API_Tests/negative_tests --runInBand",
+    "test:all": "node --experimental-vm-modules node_modules/jest/bin/jest.js API_Tests --runInBand",
+    "test:report": "npm run test:all && node generate-report.js",
+    "test:report:api": "npm run test:api && node generate-report.js",
+    "test:report:spec": "npm run test:spec && node generate-report.js",
+    "test:report:negative": "npm run test:negative && node generate-report.js",
+    "report": "node generate-report.js",
+    "report:open": "node generate-report.js && start TESTING_REPORT_LATEST.html",
+    "test:health": "node --experimental-vm-modules node_modules/jest/bin/jest.js API_Tests/tests/GET_health.test.js --runInBand",
+    "test:keyvalue": "node --experimental-vm-modules node_modules/jest/bin/jest.js API_Tests/tests/*key-value*.test.js --runInBand",
+    "test:attributes": "node --experimental-vm-modules node_modules/jest/bin/jest.js API_Tests/tests/*attributes*.test.js --runInBand",
+    "test:simple": "node --experimental-vm-modules node_modules/jest/bin/jest.js steps/simple_api_test.steps.js --runInBand",
+    "test:watch": "node --experimental-vm-modules node_modules/jest/bin/jest.js --watch",
+    "check": "node check-connection.js",
+    "verify-db": "node verify-db-connection.js"
+  },
+  "keywords": [
+    "testing",
+    "bdd",
+    "gherkin",
+    "cucumber",
+    "api",
+    "postgresql",
+    "person-service"
+  ],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@jest/globals": "^29.7.0",
+    "jest": "^29.7.0",
+    "jest-cucumber": "^4.0.0",
+    "jest-html-reporter": "^3.10.2"
+  },
+  "dependencies": {
+    "axios": "^1.6.0",
+    "dotenv": "^16.3.1",
+    "node-fetch": "^3.3.2",
+    "pg": "^8.11.3"
+  }
+}

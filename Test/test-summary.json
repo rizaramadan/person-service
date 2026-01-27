@@ -1,0 +1,15 @@
+{
+  "generatedAt": "2026-01-20T17:06:16.351Z",
+  "statistics": {
+    "totalTests": 78,
+    "passedTests": 77,
+    "failedTests": 1,
+    "totalSuites": 12,
+    "passedSuites": 11,
+    "failedSuites": 1,
+    "passRate": "98.7",
+    "duration": "9.2"
+  },
+  "status": "WARNING",
+  "recommendation": "Fix failing tests before deployment"
+}
