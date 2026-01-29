@@ -3,6 +3,7 @@ package person_attributes
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"os"
@@ -123,23 +124,32 @@ func (h *PersonAttributesHandler) CreateAttribute(c echo.Context) error {
 
 	// Log the request to audit log (request_log table)
 	if req.Meta != nil && req.Meta.TraceID != "" {
-		// Serialize request body and response for audit
-		requestBody := fmt.Sprintf(`{"key":"%s","value":"%s"}`, req.Key, req.Value)
-		responseBody := "" // Will be populated after getting the attribute
+		// Serialize request body for audit using proper JSON encoding
+		requestBodyMap := map[string]string{
+			"key":   req.Key,
+			"value": req.Value,
+		}
+		requestBodyBytes, err := json.Marshal(requestBodyMap)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "WARNING: Failed to marshal request body for audit: %v\n", err)
+		} else {
+			requestBody := string(requestBodyBytes)
+			responseBody := "" // Will be populated after getting the attribute
 
-		_, logErr := h.queries.InsertRequestLog(ctx, db.InsertRequestLogParams{
-			TraceID:               req.Meta.TraceID,
-			Caller:                req.Meta.Caller,
-			Reason:                req.Meta.Reason,
-			EncryptedRequestBody:  requestBody,
-			EncryptedResponseBody: responseBody,
-			EncKey:                h.encryptionKey,
-			KeyVersion:            h.keyVersion,
-		})
+			_, logErr := h.queries.InsertRequestLog(ctx, db.InsertRequestLogParams{
+				TraceID:               req.Meta.TraceID,
+				Caller:                req.Meta.Caller,
+				Reason:                req.Meta.Reason,
+				EncryptedRequestBody:  requestBody,
+				EncryptedResponseBody: responseBody,
+				EncKey:                h.encryptionKey,
+				KeyVersion:            h.keyVersion,
+			})
 
-		if logErr != nil {
-			// Log the error but don't fail the request
-			fmt.Fprintf(os.Stderr, "WARNING: Failed to insert request log: %v\n", logErr)
+			if logErr != nil {
+				// Log the error but don't fail the request
+				fmt.Fprintf(os.Stderr, "WARNING: Failed to insert request log: %v\n", logErr)
+			}
 		}
 	}
 
@@ -242,8 +252,9 @@ func (h *PersonAttributesHandler) GetAttribute(c echo.Context) error {
 	var personID pgtype.UUID
 	err := personID.Scan(personIDStr)
 	if err != nil {
-		return c.JSON(http.StatusBadRequest, map[string]interface{}{
-			"message": "Invalid person ID format",
+		// Return 404 for invalid UUID (treat as person not found)
+		return c.JSON(http.StatusNotFound, map[string]interface{}{
+			"message": "Person not found",
 		})
 	}
 
@@ -251,8 +262,9 @@ func (h *PersonAttributesHandler) GetAttribute(c echo.Context) error {
 	attributeIDStr := c.Param("attributeId")
 	attributeID, err := strconv.ParseInt(attributeIDStr, 10, 32)
 	if err != nil {
-		return c.JSON(http.StatusBadRequest, map[string]interface{}{
-			"message": "Invalid attribute ID format",
+		// Return 404 for invalid attribute ID (treat as attribute not found)
+		return c.JSON(http.StatusNotFound, map[string]interface{}{
+			"message": "Attribute not found",
 		})
 	}
 
@@ -321,8 +333,9 @@ func (h *PersonAttributesHandler) UpdateAttribute(c echo.Context) error {
 	var personID pgtype.UUID
 	err := personID.Scan(personIDStr)
 	if err != nil {
-		return c.JSON(http.StatusBadRequest, map[string]interface{}{
-			"message": "Invalid person ID format",
+		// Return 404 for invalid UUID (treat as person not found)
+		return c.JSON(http.StatusNotFound, map[string]interface{}{
+			"message": "Not found",
 		})
 	}
 
@@ -330,8 +343,9 @@ func (h *PersonAttributesHandler) UpdateAttribute(c echo.Context) error {
 	attributeIDStr := c.Param("attributeId")
 	attributeID, err := strconv.ParseInt(attributeIDStr, 10, 32)
 	if err != nil {
-		return c.JSON(http.StatusBadRequest, map[string]interface{}{
-			"message": "Invalid attribute ID format",
+		// Return 404 for invalid attribute ID (treat as attribute not found)
+		return c.JSON(http.StatusNotFound, map[string]interface{}{
+			"message": "Attribute not found",
 		})
 	}
 
@@ -457,8 +471,9 @@ func (h *PersonAttributesHandler) DeleteAttribute(c echo.Context) error {
 	var personID pgtype.UUID
 	err := personID.Scan(personIDStr)
 	if err != nil {
-		return c.JSON(http.StatusBadRequest, map[string]interface{}{
-			"message": "Invalid person ID format",
+		// Return 404 for invalid UUID (treat as person not found)
+		return c.JSON(http.StatusNotFound, map[string]interface{}{
+			"message": "Not found",
 		})
 	}
 
@@ -466,8 +481,9 @@ func (h *PersonAttributesHandler) DeleteAttribute(c echo.Context) error {
 	attributeIDStr := c.Param("attributeId")
 	attributeID, err := strconv.ParseInt(attributeIDStr, 10, 32)
 	if err != nil {
-		return c.JSON(http.StatusBadRequest, map[string]interface{}{
-			"message": "Invalid attribute ID format",
+		// Return 404 for invalid attribute ID (treat as attribute not found)
+		return c.JSON(http.StatusNotFound, map[string]interface{}{
+			"message": "Attribute not found",
 		})
 	}
 
