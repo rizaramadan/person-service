@@ -335,7 +335,7 @@ func (h *PersonAttributesHandler) UpdateAttribute(c echo.Context) error {
 	if err != nil {
 		// Return 404 for invalid UUID (treat as person not found)
 		return c.JSON(http.StatusNotFound, map[string]interface{}{
-			"message": "Not found",
+			"message": "Person not found",
 		})
 	}
 
@@ -364,7 +364,7 @@ func (h *PersonAttributesHandler) UpdateAttribute(c echo.Context) error {
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return c.JSON(http.StatusNotFound, map[string]interface{}{
-				"message": "Not found",
+				"message": "Person not found",
 			})
 		}
 		return c.JSON(http.StatusInternalServerError, map[string]interface{}{
@@ -473,7 +473,7 @@ func (h *PersonAttributesHandler) DeleteAttribute(c echo.Context) error {
 	if err != nil {
 		// Return 404 for invalid UUID (treat as person not found)
 		return c.JSON(http.StatusNotFound, map[string]interface{}{
-			"message": "Not found",
+			"message": "Person not found",
 		})
 	}
 
@@ -494,7 +494,7 @@ func (h *PersonAttributesHandler) DeleteAttribute(c echo.Context) error {
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return c.JSON(http.StatusNotFound, map[string]interface{}{
-				"message": "Not found",
+				"message": "Person not found",
 			})
 		}
 		return c.JSON(http.StatusInternalServerError, map[string]interface{}{

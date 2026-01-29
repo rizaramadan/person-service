@@ -236,7 +236,7 @@ describe('NEGATIVE: POST /api/key-value - Create/Update Key-Value', () => {
       // If accepted, cleanup
       testKeys.push(longKey);
     } catch (error) {
-      // Should reject with 400, 413 (Payload Too Large), or 500
+      // Should reject with 400, 413 (Payload Too Large), or 500 (current API behavior)
       expect([400, 413, 500]).toContain(error.response.status);
     }
   });
@@ -252,7 +252,7 @@ describe('NEGATIVE: POST /api/key-value - Create/Update Key-Value', () => {
       // If accepted, cleanup
       testKeys.push('long-value-test');
     } catch (error) {
-      // Should reject with 400, 413 (Payload Too Large), or 500
+      // Should reject with 400, 413 (Payload Too Large), or 500 (current API behavior)
       expect([400, 413, 500]).toContain(error.response.status);
     }
   });

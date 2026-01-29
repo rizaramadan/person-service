@@ -175,7 +175,7 @@ describe('NEGATIVE: GET /api/key-value/:key - Retrieve Value', () => {
       await apiClient.get(`/api/key-value/${longKey}`);
       fail('Should have thrown error');
     } catch (error) {
-      // Should reject with 400, 404, 414 (URI Too Long), or 500
+      // Should reject with 400, 404, 414 (URI Too Long), or 500 (current API behavior)
       expect([400, 404, 414, 500]).toContain(error.response.status);
     }
   });
