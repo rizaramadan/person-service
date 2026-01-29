@@ -81,15 +81,16 @@ describe('NEGATIVE: GET /persons/:personId/attributes - Get All Attributes', () 
   // ========================================
   
   test('Should return empty or 404 for non-existent personId', async () => {
-    const response = await apiClient.get('/persons/00000000-0000-0000-0000-000000000000/attributes');
-    
-    if (response.status === 200) {
-      // Returns empty array
+    try {
+      const response = await apiClient.get('/persons/00000000-0000-0000-0000-000000000000/attributes');
+      
+      // If request succeeds, should return 200 with empty array
+      expect(response.status).toBe(200);
       expect(Array.isArray(response.data)).toBe(true);
       expect(response.data.length).toBe(0);
-    } else {
-      // Or returns 404
-      expect(response.status).toBe(404);
+    } catch (error) {
+      // Or returns 404 for non-existent person
+      expect(error.response.status).toBe(404);
     }
   });
   
@@ -147,28 +148,38 @@ describe('NEGATIVE: GET /persons/:personId/attributes - Get All Attributes', () 
   // ========================================
   
   test('Should reject request with body (GET should not have body)', async () => {
-    const response = await axios.get(
-      `${BASE_URL}/persons/550e8400-e29b-41d4-a716-446655440000/attributes`,
-      {
-        headers: { 'x-api-key': API_KEY },
-        data: { unexpected: 'body' }
-      }
-    );
-    
-    // Should ignore body and proceed
-    expect([200, 404]).toContain(response.status);
+    try {
+      const response = await axios.get(
+        `${BASE_URL}/persons/550e8400-e29b-41d4-a716-446655440000/attributes`,
+        {
+          headers: { 'x-api-key': API_KEY },
+          data: { unexpected: 'body' }
+        }
+      );
+      
+      // Should ignore body and proceed (if person exists, or API accepts non-existent person)
+      expect([200, 400]).toContain(response.status);
+    } catch (error) {
+      // Or returns 404 for non-existent person, or 400 if API rejects GET with body
+      expect([400, 404]).toContain(error.response.status);
+    }
   });
   
   test('Should handle invalid Accept header', async () => {
-    const response = await apiClient.get(
-      '/persons/550e8400-e29b-41d4-a716-446655440000/attributes',
-      {
-        headers: { 'Accept': 'application/xml' }
-      }
-    );
-    
-    // May accept or reject
-    expect([200, 404, 406]).toContain(response.status);
+    try {
+      const response = await apiClient.get(
+        '/persons/550e8400-e29b-41d4-a716-446655440000/attributes',
+        {
+          headers: { 'Accept': 'application/xml' }
+        }
+      );
+      
+      // May accept or reject with 200 or 406
+      expect([200, 406]).toContain(response.status);
+    } catch (error) {
+      // Or returns 404 for non-existent person, or 406 for invalid Accept
+      expect([404, 406]).toContain(error.response.status);
+    }
   });
   
   // ========================================
@@ -176,12 +187,17 @@ describe('NEGATIVE: GET /persons/:personId/attributes - Get All Attributes', () 
   // ========================================
   
   test('Should ignore invalid query parameters', async () => {
-    const response = await apiClient.get(
-      '/persons/550e8400-e29b-41d4-a716-446655440000/attributes?invalid=param&foo=bar'
-    );
-    
-    // Should ignore query params
-    expect([200, 404]).toContain(response.status);
+    try {
+      const response = await apiClient.get(
+        '/persons/550e8400-e29b-41d4-a716-446655440000/attributes?invalid=param&foo=bar'
+      );
+      
+      // Should ignore query params
+      expect(response.status).toBe(200);
+    } catch (error) {
+      // Or returns 404 for non-existent person
+      expect(error.response.status).toBe(404);
+    }
   });
   
   // ========================================
