@@ -42,7 +42,7 @@ func startContainer(ctx context.Context) error {
 	var err error
 
 	pgContainer, err = postgres.Run(ctx,
-		"postgres:16-alpine",
+		"postgres:18-alpine",
 		postgres.WithDatabase(dbName),
 		postgres.WithUsername(dbUser),
 		postgres.WithPassword(dbPassword),
