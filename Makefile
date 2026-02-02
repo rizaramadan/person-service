@@ -30,7 +30,15 @@ test-only:
 
 # run unit tests
 test-unit:
-	cd source/app && go test -v ./...
+	cd source/app && $(shell go env GOPATH)/bin/gotestsum --format testdox -- -v ./...
+
+# run Go integration tests (godog + testcontainers)
+test-integration:
+	cd source/app && $(shell go env GOPATH)/bin/gotestsum --format testdox -- -v -coverprofile=coverage-int.out -coverpkg=./... ./integration/...
+
+# run all Go tests (unit + integration)
+test-all:
+	cd source/app && $(shell go env GOPATH)/bin/gotestsum --format testdox -- -v -coverprofile=coverage.out -coverpkg=./... ./...
 
 # run unit tests with coverage
 test-unit-coverage:
