@@ -36,9 +36,20 @@ test-unit:
 test-integration:
 	cd source/app && $(shell go env GOPATH)/bin/gotestsum --format testdox -- -v -coverprofile=coverage-int.out -coverpkg=./... ./integration/...
 
-# run all Go tests (unit + integration)
+# run all Go tests (unit + integration) with coverage percentage
 test-all:
 	cd source/app && $(shell go env GOPATH)/bin/gotestsum --format testdox -- -v -coverprofile=coverage.out -coverpkg=./... ./...
+	@echo ""
+	@echo "============================================"
+	@echo "           CODE COVERAGE SUMMARY            "
+	@echo "============================================"
+	@cd source/app && go tool cover -func=coverage.out | grep total | awk '{print "Total Coverage: " $$3}'
+	@echo "============================================"
+	@echo ""
+	@echo "Coverage by package:"
+	@cd source/app && go tool cover -func=coverage.out | grep -v "total:" | head -30
+	@echo ""
+	@echo "For detailed HTML report run: cd source/app && go tool cover -html=coverage.out"
 
 # run unit tests with coverage
 test-unit-coverage:

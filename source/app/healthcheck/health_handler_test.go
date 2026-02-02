@@ -81,7 +81,7 @@ func TestCheck_DatabaseError(t *testing.T) {
 	// Assert
 	assert.NoError(t, err)
 	assert.Equal(t, http.StatusInternalServerError, rec.Code)
-	assert.Contains(t, rec.Body.String(), "unhealthy")
+	assert.Contains(t, rec.Body.String(), "HC_001_HEALTH_CHECK_FAILED")
 }
 
 // createClosedPool creates a pool and immediately closes it to simulate database errors

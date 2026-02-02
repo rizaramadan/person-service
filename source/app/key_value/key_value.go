@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"net/http"
+	errs "person-service/errors"
 	db "person-service/internal/db/generated"
 
 	"github.com/jackc/pgx/v5"
@@ -33,15 +34,17 @@ func (h *KeyValueHandler) SetValue(c echo.Context) error {
 	// Parse request body
 	var req SetValueRequest
 	if err := c.Bind(&req); err != nil {
-		return c.JSON(http.StatusBadRequest, map[string]interface{}{
-			"error": "Invalid request body",
+		return c.JSON(http.StatusBadRequest, errs.ErrorResponse{
+			Message:   "Invalid request body",
+			ErrorCode: errs.ErrKVInvalidRequestBody,
 		})
 	}
 
 	// Validate required fields
 	if req.Key == "" || req.Value == "" {
-		return c.JSON(http.StatusBadRequest, map[string]interface{}{
-			"error": "Key and value are required",
+		return c.JSON(http.StatusBadRequest, errs.ErrorResponse{
+			Message:   "Key and value are required",
+			ErrorCode: errs.ErrKVMissingKeyOrValue,
 		})
 	}
 
@@ -53,16 +56,18 @@ func (h *KeyValueHandler) SetValue(c echo.Context) error {
 	})
 
 	if err != nil {
-		return c.JSON(http.StatusInternalServerError, map[string]interface{}{
-			"error": "Failed to set value",
+		return c.JSON(http.StatusInternalServerError, errs.ErrorResponse{
+			Message:   "Failed to set value",
+			ErrorCode: errs.ErrKVFailedSetValue,
 		})
 	}
 
 	// Retrieve the full record with timestamps
 	record, err := h.queries.GetKeyValue(ctx, req.Key)
 	if err != nil {
-		return c.JSON(http.StatusInternalServerError, map[string]interface{}{
-			"error": "Failed to retrieve value",
+		return c.JSON(http.StatusInternalServerError, errs.ErrorResponse{
+			Message:   "Failed to retrieve value",
+			ErrorCode: errs.ErrKVFailedRetrieveValue,
 		})
 	}
 
@@ -87,8 +92,9 @@ func (h *KeyValueHandler) SetValue(c echo.Context) error {
 func (h *KeyValueHandler) GetValue(c echo.Context) error {
 	key := c.Param("key")
 	if key == "" {
-		return c.JSON(http.StatusBadRequest, map[string]interface{}{
-			"error": "Key parameter is required",
+		return c.JSON(http.StatusBadRequest, errs.ErrorResponse{
+			Message:   "Key parameter is required",
+			ErrorCode: errs.ErrKVMissingKeyParam,
 		})
 	}
 
@@ -98,12 +104,14 @@ func (h *KeyValueHandler) GetValue(c echo.Context) error {
 
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return c.JSON(http.StatusNotFound, map[string]interface{}{
-				"error": "Key not found",
+			return c.JSON(http.StatusNotFound, errs.ErrorResponse{
+				Message:   "Key not found",
+				ErrorCode: errs.ErrKVKeyNotFound,
 			})
 		}
-		return c.JSON(http.StatusInternalServerError, map[string]interface{}{
-			"error": "Failed to retrieve value",
+		return c.JSON(http.StatusInternalServerError, errs.ErrorResponse{
+			Message:   "Failed to retrieve value",
+			ErrorCode: errs.ErrKVFailedRetrieveValue,
 		})
 	}
 
@@ -128,8 +136,9 @@ func (h *KeyValueHandler) GetValue(c echo.Context) error {
 func (h *KeyValueHandler) DeleteValue(c echo.Context) error {
 	key := c.Param("key")
 	if key == "" {
-		return c.JSON(http.StatusBadRequest, map[string]interface{}{
-			"error": "Key parameter is required",
+		return c.JSON(http.StatusBadRequest, errs.ErrorResponse{
+			Message:   "Key parameter is required",
+			ErrorCode: errs.ErrKVMissingKeyParam,
 		})
 	}
 
@@ -138,8 +147,9 @@ func (h *KeyValueHandler) DeleteValue(c echo.Context) error {
 	err := h.queries.DeleteValue(ctx, key)
 
 	if err != nil {
-		return c.JSON(http.StatusInternalServerError, map[string]interface{}{
-			"error": "Failed to delete value",
+		return c.JSON(http.StatusInternalServerError, errs.ErrorResponse{
+			Message:   "Failed to delete value",
+			ErrorCode: errs.ErrKVFailedDeleteValue,
 		})
 	}
 
