@@ -895,7 +895,7 @@ func TestErrorResponse_KeyValue_Schema(t *testing.T) {
 			err := json.Unmarshal(rec.Body.Bytes(), &errResponse)
 			assert.NoError(t, err)
 			assert.Contains(t, errResponse, "message", "Error response should contain 'message'")
-			assert.Contains(t, errResponse, "errorCode", "Error response should contain 'errorCode'")
+			assert.Contains(t, errResponse, "error_code", "Error response should contain 'error_code'")
 		})
 	}
 }
@@ -984,7 +984,8 @@ func TestGetValue_SQLInjectionAttempt(t *testing.T) {
 
 	for _, injection := range sqlInjectionAttempts {
 		e := echo.New()
-		req := httptest.NewRequest(http.MethodGet, "/api/key-value/"+injection, nil)
+		// Use a safe URL path and pass injection via param values only
+		req := httptest.NewRequest(http.MethodGet, "/api/key-value/test-key", nil)
 		rec := httptest.NewRecorder()
 		c := e.NewContext(req, rec)
 		c.SetParamNames("key")

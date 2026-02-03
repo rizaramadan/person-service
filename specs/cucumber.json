@@ -1,5 +1,0 @@
-{
-  "features": ["features/**/*.feature"],
-  "glue": ["steps/**/*.steps.js"]
-}
-

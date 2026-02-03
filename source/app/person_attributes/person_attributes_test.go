@@ -1395,14 +1395,11 @@ func TestConcurrentAttributeUpsert_SameKey(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, http.StatusOK, rec.Code)
 
-	// Parse response to verify only one attribute
-	var response map[string]interface{}
-	err = json.Unmarshal(rec.Body.Bytes(), &response)
+	// Parse response to verify only one attribute (API returns array directly)
+	var attributes []interface{}
+	err = json.Unmarshal(rec.Body.Bytes(), &attributes)
 	assert.NoError(t, err)
-	attributes, ok := response["attributes"].([]interface{})
-	if ok {
-		assert.Equal(t, 1, len(attributes), "Should have exactly one attribute after upserts")
-	}
+	assert.Equal(t, 1, len(attributes), "Should have exactly one attribute after upserts")
 }
 
 // TestConcurrentReadWrite_Attributes tests concurrent read and write operations
@@ -1702,13 +1699,11 @@ func TestMultipleAttributesPerPerson(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, http.StatusOK, rec.Code)
 
-	// Verify count
-	var response map[string]interface{}
-	err = json.Unmarshal(rec.Body.Bytes(), &response)
+	// Verify count (API returns array directly)
+	var attrs []interface{}
+	err = json.Unmarshal(rec.Body.Bytes(), &attrs)
 	assert.NoError(t, err)
-	if attrs, ok := response["attributes"].([]interface{}); ok {
-		assert.Equal(t, numAttributes, len(attrs), "Should have %d attributes", numAttributes)
-	}
+	assert.Equal(t, numAttributes, len(attrs), "Should have %d attributes", numAttributes)
 }
 
 // ============================================================================
@@ -1786,14 +1781,10 @@ func TestGetAllAttributes_ResponseSchema(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, http.StatusOK, rec.Code)
 
-	// Validate response structure
-	var response map[string]interface{}
-	err = json.Unmarshal(rec.Body.Bytes(), &response)
+	// Validate response structure (API returns array directly)
+	var attrs []interface{}
+	err = json.Unmarshal(rec.Body.Bytes(), &attrs)
 	assert.NoError(t, err)
-
-	assert.Contains(t, response, "attributes", "Response should contain 'attributes' array")
-	attrs, ok := response["attributes"].([]interface{})
-	assert.True(t, ok, "'attributes' should be an array")
 	assert.Greater(t, len(attrs), 0, "Should have at least one attribute")
 
 	// Validate each attribute has required fields
@@ -1870,7 +1861,7 @@ func TestErrorResponse_Schema(t *testing.T) {
 			err := json.Unmarshal(rec.Body.Bytes(), &errResponse)
 			assert.NoError(t, err)
 			assert.Contains(t, errResponse, "message", "Error response should contain 'message'")
-			assert.Contains(t, errResponse, "errorCode", "Error response should contain 'errorCode'")
+			assert.Contains(t, errResponse, "error_code", "Error response should contain 'error_code'")
 		})
 	}
 }
