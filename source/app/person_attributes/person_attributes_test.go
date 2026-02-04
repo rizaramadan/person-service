@@ -57,6 +57,16 @@ func createTestAttribute(ctx context.Context, personID, key, value string) (int3
 	return id, err
 }
 
+func getTestAttribute(ctx context.Context, personID, key string) (string, error) {
+	var value string
+	err := pool.QueryRow(ctx, `
+		SELECT pgp_sym_decrypt(encrypted_value, $3) as value
+		FROM person_attributes
+		WHERE person_id = $1::uuid AND attribute_key = $2
+	`, personID, key, testEncryptionKey).Scan(&value)
+	return value, err
+}
+
 func TestNewPersonAttributesHandler(t *testing.T) {
 	queries := db.New(pool)
 	handler := NewPersonAttributesHandler(queries)
@@ -1172,6 +1182,122 @@ func TestGetAttribute_DecryptionError(t *testing.T) {
 	assert.Contains(t, rec.Body.String(), "Failed to retrieve attributes")
 }
 
+// TestGetAttribute_CrossPersonAccessDenied tests that person A cannot access person B's attributes
+func TestGetAttribute_CrossPersonAccessDenied(t *testing.T) {
+	ctx := context.Background()
+	err := testdb.TruncateTables(ctx, pool)
+	assert.NoError(t, err)
+
+	// Create two persons
+	personA, err := createTestPerson(ctx, "person-A")
+	assert.NoError(t, err)
+	personB, err := createTestPerson(ctx, "person-B")
+	assert.NoError(t, err)
+
+	// Create an attribute for person A
+	attrID, err := createTestAttribute(ctx, personA, "private-email", "personA@example.com")
+	assert.NoError(t, err)
+
+	queries := db.New(pool)
+	handler := NewPersonAttributesHandler(queries)
+
+	// Try to access person A's attribute via person B's endpoint
+	e := echo.New()
+	req := httptest.NewRequest(http.MethodGet, fmt.Sprintf("/persons/%s/attributes/%d", personB, attrID), nil)
+	rec := httptest.NewRecorder()
+	c := e.NewContext(req, rec)
+	c.SetParamNames("personId", "attributeId")
+	c.SetParamValues(personB, fmt.Sprintf("%d", attrID))
+
+	err = handler.GetAttribute(c)
+
+	assert.NoError(t, err)
+	// Should return 404 because the attribute doesn't belong to person B
+	assert.Equal(t, http.StatusNotFound, rec.Code)
+	assert.Contains(t, rec.Body.String(), "Attribute not found")
+}
+
+// TestUpdateAttribute_CrossPersonAccessDenied tests that person A cannot update person B's attributes
+func TestUpdateAttribute_CrossPersonAccessDenied(t *testing.T) {
+	ctx := context.Background()
+	err := testdb.TruncateTables(ctx, pool)
+	assert.NoError(t, err)
+
+	// Create two persons
+	personA, err := createTestPerson(ctx, "person-A-update")
+	assert.NoError(t, err)
+	personB, err := createTestPerson(ctx, "person-B-update")
+	assert.NoError(t, err)
+
+	// Create an attribute for person A
+	attrID, err := createTestAttribute(ctx, personA, "private-data", "sensitive-value")
+	assert.NoError(t, err)
+
+	queries := db.New(pool)
+	handler := NewPersonAttributesHandler(queries)
+
+	// Try to update person A's attribute via person B's endpoint
+	e := echo.New()
+	jsonBody := `{"value":"hacked-value"}`
+	req := httptest.NewRequest(http.MethodPut, fmt.Sprintf("/persons/%s/attributes/%d", personB, attrID), strings.NewReader(jsonBody))
+	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+	rec := httptest.NewRecorder()
+	c := e.NewContext(req, rec)
+	c.SetParamNames("personId", "attributeId")
+	c.SetParamValues(personB, fmt.Sprintf("%d", attrID))
+
+	err = handler.UpdateAttribute(c)
+
+	assert.NoError(t, err)
+	// Should return 404 because the attribute doesn't belong to person B
+	assert.Equal(t, http.StatusNotFound, rec.Code)
+	assert.Contains(t, rec.Body.String(), "Attribute not found")
+
+	// Verify original value is unchanged
+	originalAttr, err := getTestAttribute(ctx, personA, "private-data")
+	assert.NoError(t, err)
+	assert.Equal(t, "sensitive-value", originalAttr)
+}
+
+// TestDeleteAttribute_CrossPersonAccessDenied tests that person A cannot delete person B's attributes
+func TestDeleteAttribute_CrossPersonAccessDenied(t *testing.T) {
+	ctx := context.Background()
+	err := testdb.TruncateTables(ctx, pool)
+	assert.NoError(t, err)
+
+	// Create two persons
+	personA, err := createTestPerson(ctx, "person-A-delete")
+	assert.NoError(t, err)
+	personB, err := createTestPerson(ctx, "person-B-delete")
+	assert.NoError(t, err)
+
+	// Create an attribute for person A
+	attrID, err := createTestAttribute(ctx, personA, "private-data", "should-not-be-deleted")
+	assert.NoError(t, err)
+
+	queries := db.New(pool)
+	handler := NewPersonAttributesHandler(queries)
+
+	// Try to delete person A's attribute via person B's endpoint
+	e := echo.New()
+	req := httptest.NewRequest(http.MethodDelete, fmt.Sprintf("/persons/%s/attributes/%d", personB, attrID), nil)
+	rec := httptest.NewRecorder()
+	c := e.NewContext(req, rec)
+	c.SetParamNames("personId", "attributeId")
+	c.SetParamValues(personB, fmt.Sprintf("%d", attrID))
+
+	err = handler.DeleteAttribute(c)
+
+	assert.NoError(t, err)
+	// Should return 404 because the attribute doesn't belong to person B
+	assert.Equal(t, http.StatusNotFound, rec.Code)
+
+	// Verify attribute still exists for person A
+	originalAttr, err := getTestAttribute(ctx, personA, "private-data")
+	assert.NoError(t, err)
+	assert.Equal(t, "should-not-be-deleted", originalAttr)
+}
+
 // TestUpdateAttribute_GetAttributesDecryptionError tests error when getting attributes for update fails
 func TestUpdateAttribute_GetAttributesDecryptionError(t *testing.T) {
 	ctx := context.Background()
@@ -2011,4 +2137,177 @@ func TestUniqueConstraint_PersonAttributeKey(t *testing.T) {
 	// This should fail due to unique constraint
 	assert.Error(t, err, "Should fail on unique constraint violation")
 	assert.Contains(t, err.Error(), "duplicate key value", "Error should mention duplicate key")
+}
+
+// TestAuditLog_WithTraceID verifies that audit log is created when traceID is provided
+func TestAuditLog_WithTraceID(t *testing.T) {
+	ctx := context.Background()
+	err := testdb.TruncateTables(ctx, pool)
+	assert.NoError(t, err)
+
+	personID, err := createTestPerson(ctx, "audit-log-test")
+	assert.NoError(t, err)
+
+	queries := db.New(pool)
+	handler := NewPersonAttributesHandler(queries)
+
+	// Create attribute with traceID
+	traceID := "audit-test-trace-999"
+	e := echo.New()
+	jsonBody := fmt.Sprintf(`{"key":"audit-key","value":"audit-value","meta":{"caller":"test-caller","reason":"test-reason","traceId":"%s"}}`, traceID)
+	req := httptest.NewRequest(http.MethodPut, "/persons/"+personID+"/attributes", strings.NewReader(jsonBody))
+	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+	rec := httptest.NewRecorder()
+	c := e.NewContext(req, rec)
+	c.SetParamNames("personId")
+	c.SetParamValues(personID)
+
+	err = handler.CreateAttribute(c)
+	assert.NoError(t, err)
+	assert.Equal(t, http.StatusCreated, rec.Code)
+
+	// Verify request_log was populated
+	var count int
+	err = pool.QueryRow(ctx, "SELECT COUNT(*) FROM request_log WHERE trace_id = $1", traceID).Scan(&count)
+	assert.NoError(t, err)
+	assert.Equal(t, 1, count, "Request log should be created when traceID is provided")
+
+	// Verify log details
+	var caller, reason string
+	err = pool.QueryRow(ctx, "SELECT caller, reason FROM request_log WHERE trace_id = $1", traceID).Scan(&caller, &reason)
+	assert.NoError(t, err)
+	assert.Equal(t, "test-caller", caller)
+	assert.Equal(t, "test-reason", reason)
+}
+
+// TestAuditLog_WithoutTraceID verifies that audit log is NOT created when traceID is empty
+func TestAuditLog_WithoutTraceID(t *testing.T) {
+	ctx := context.Background()
+	err := testdb.TruncateTables(ctx, pool)
+	assert.NoError(t, err)
+
+	personID, err := createTestPerson(ctx, "audit-log-test-2")
+	assert.NoError(t, err)
+
+	queries := db.New(pool)
+	handler := NewPersonAttributesHandler(queries)
+
+	// Get initial count
+	var initialCount int
+	err = pool.QueryRow(ctx, "SELECT COUNT(*) FROM request_log").Scan(&initialCount)
+	assert.NoError(t, err)
+
+	// Create attribute with empty traceID
+	e := echo.New()
+	jsonBody := `{"key":"no-audit-key","value":"no-audit-value","meta":{"caller":"test","reason":"testing","traceId":""}}`
+	req := httptest.NewRequest(http.MethodPut, "/persons/"+personID+"/attributes", strings.NewReader(jsonBody))
+	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+	rec := httptest.NewRecorder()
+	c := e.NewContext(req, rec)
+	c.SetParamNames("personId")
+	c.SetParamValues(personID)
+
+	err = handler.CreateAttribute(c)
+	assert.NoError(t, err)
+	assert.Equal(t, http.StatusCreated, rec.Code)
+
+	// Verify request_log count remains the same
+	var finalCount int
+	err = pool.QueryRow(ctx, "SELECT COUNT(*) FROM request_log").Scan(&finalCount)
+	assert.NoError(t, err)
+	assert.Equal(t, initialCount, finalCount, "Request log should NOT be created when traceID is empty")
+}
+
+// TestUpdateAttribute_KeyRename verifies that old key is deleted when renaming attribute key
+func TestUpdateAttribute_KeyRename(t *testing.T) {
+	ctx := context.Background()
+	err := testdb.TruncateTables(ctx, pool)
+	assert.NoError(t, err)
+
+	personID, err := createTestPerson(ctx, "key-rename-test")
+	assert.NoError(t, err)
+
+	// Create initial attribute with "old-key"
+	attrID, err := createTestAttribute(ctx, personID, "old-key", "some-value")
+	assert.NoError(t, err)
+
+	queries := db.New(pool)
+	handler := NewPersonAttributesHandler(queries)
+
+	// Update attribute with a new key (rename)
+	e := echo.New()
+	jsonBody := `{"key":"new-key","value":"updated-value","meta":{"caller":"test","reason":"testing","traceId":"rename123"}}`
+	req := httptest.NewRequest(http.MethodPut, fmt.Sprintf("/persons/%s/attributes/%d", personID, attrID), strings.NewReader(jsonBody))
+	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+	rec := httptest.NewRecorder()
+	c := e.NewContext(req, rec)
+	c.SetParamNames("personId", "attributeId")
+	c.SetParamValues(personID, fmt.Sprintf("%d", attrID))
+
+	err = handler.UpdateAttribute(c)
+	assert.NoError(t, err)
+	assert.Equal(t, http.StatusOK, rec.Code)
+
+	// Verify old-key no longer exists
+	var oldKeyCount int
+	err = pool.QueryRow(ctx, "SELECT COUNT(*) FROM person_attributes WHERE person_id = $1::uuid AND attribute_key = 'old-key'", personID).Scan(&oldKeyCount)
+	assert.NoError(t, err)
+	assert.Equal(t, 0, oldKeyCount, "Old key should be deleted after rename")
+
+	// Verify new-key exists with correct value
+	var newKeyValue string
+	err = pool.QueryRow(ctx, `
+		SELECT pgp_sym_decrypt(encrypted_value, $2)
+		FROM person_attributes
+		WHERE person_id = $1::uuid AND attribute_key = 'new-key'
+	`, personID, testEncryptionKey).Scan(&newKeyValue)
+	assert.NoError(t, err)
+	assert.Equal(t, "updated-value", newKeyValue, "New key should exist with updated value")
+}
+
+// TestUpdateAttribute_SameKey verifies that key is NOT deleted when updating with same key
+func TestUpdateAttribute_SameKey(t *testing.T) {
+	ctx := context.Background()
+	err := testdb.TruncateTables(ctx, pool)
+	assert.NoError(t, err)
+
+	personID, err := createTestPerson(ctx, "same-key-test")
+	assert.NoError(t, err)
+
+	// Create initial attribute
+	attrID, err := createTestAttribute(ctx, personID, "same-key", "initial-value")
+	assert.NoError(t, err)
+
+	queries := db.New(pool)
+	handler := NewPersonAttributesHandler(queries)
+
+	// Update attribute with the SAME key (just change value)
+	e := echo.New()
+	jsonBody := `{"key":"same-key","value":"updated-value","meta":{"caller":"test","reason":"testing","traceId":"same123"}}`
+	req := httptest.NewRequest(http.MethodPut, fmt.Sprintf("/persons/%s/attributes/%d", personID, attrID), strings.NewReader(jsonBody))
+	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+	rec := httptest.NewRecorder()
+	c := e.NewContext(req, rec)
+	c.SetParamNames("personId", "attributeId")
+	c.SetParamValues(personID, fmt.Sprintf("%d", attrID))
+
+	err = handler.UpdateAttribute(c)
+	assert.NoError(t, err)
+	assert.Equal(t, http.StatusOK, rec.Code)
+
+	// Verify only one attribute exists (no duplicates from unnecessary delete+create)
+	var count int
+	err = pool.QueryRow(ctx, "SELECT COUNT(*) FROM person_attributes WHERE person_id = $1::uuid", personID).Scan(&count)
+	assert.NoError(t, err)
+	assert.Equal(t, 1, count, "Should still have exactly one attribute")
+
+	// Verify value was updated
+	var value string
+	err = pool.QueryRow(ctx, `
+		SELECT pgp_sym_decrypt(encrypted_value, $2)
+		FROM person_attributes
+		WHERE person_id = $1::uuid AND attribute_key = 'same-key'
+	`, personID, testEncryptionKey).Scan(&value)
+	assert.NoError(t, err)
+	assert.Equal(t, "updated-value", value, "Value should be updated")
 }

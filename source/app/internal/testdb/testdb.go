@@ -143,6 +143,16 @@ func InsertKeyValueDirect(ctx context.Context, pool *pgxpool.Pool, key, value st
 	return nil
 }
 
+// GetKeyValueDirect retrieves a value by key directly from the database
+func GetKeyValueDirect(ctx context.Context, pool *pgxpool.Pool, key string) (string, error) {
+	var value string
+	err := pool.QueryRow(ctx, `SELECT value FROM key_value WHERE key = $1`, key).Scan(&value)
+	if err != nil {
+		return "", fmt.Errorf("failed to get key-value: %w", err)
+	}
+	return value, nil
+}
+
 // CleanupContainer terminates the PostgreSQL container.
 // Should be called in AfterSuite.
 func CleanupContainer(ctx context.Context) error {

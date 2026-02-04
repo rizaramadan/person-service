@@ -15,7 +15,13 @@
       "Bash(git checkout:*)",
       "Bash(git add:*)",
       "Bash(git commit:*)",
-      "Bash(git merge:*)"
+      "Bash(git merge:*)",
+      "Bash(grep:*)",
+      "Bash(gremlins unleash:*)",
+      "Bash(go env:*)",
+      "Bash(/Users/ramad/go/bin/gremlins unleash:*)",
+      "Bash(/Users/ramad/go/bin/gremlins:*)",
+      "Bash(go clean:*)"
     ]
   }
 }

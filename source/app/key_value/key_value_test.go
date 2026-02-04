@@ -1001,6 +1001,45 @@ func TestGetValue_SQLInjectionAttempt(t *testing.T) {
 	}
 }
 
+// TestDeleteValue_SQLInjectionAttempt tests DELETE endpoint against SQL injection
+func TestDeleteValue_SQLInjectionAttempt(t *testing.T) {
+	ctx := context.Background()
+	err := testdb.TruncateTables(ctx, pool)
+	assert.NoError(t, err)
+
+	// Insert a legitimate value to verify table integrity after injection attempts
+	err = testdb.InsertKeyValueDirect(ctx, pool, "legitimate-key", "legitimate-value")
+	assert.NoError(t, err)
+
+	queries := db.New(pool)
+	handler := NewKeyValueHandler(queries)
+
+	sqlInjectionAttempts := []string{
+		"'; DROP TABLE key_value; --",
+		"' OR '1'='1",
+		"key'); DELETE FROM key_value WHERE ('1'='1",
+	}
+
+	for _, injection := range sqlInjectionAttempts {
+		e := echo.New()
+		req := httptest.NewRequest(http.MethodDelete, "/api/key-value/test-key", nil)
+		rec := httptest.NewRecorder()
+		c := e.NewContext(req, rec)
+		c.SetParamNames("key")
+		c.SetParamValues(injection)
+
+		handler.DeleteValue(c)
+		// Should return 404 (key not found) - injection string is treated as literal key
+		assert.True(t, rec.Code == http.StatusNotFound || rec.Code == http.StatusOK,
+			"Should handle SQL injection attempt gracefully")
+	}
+
+	// Verify table still exists and legitimate data is intact
+	storedValue, err := testdb.GetKeyValueDirect(ctx, pool, "legitimate-key")
+	assert.NoError(t, err, "Table should still be accessible after SQL injection attempts")
+	assert.Equal(t, "legitimate-value", storedValue, "Legitimate data should be intact")
+}
+
 // TestDeleteValue_NotFound tests delete on nonexistent key
 func TestDeleteValue_NotFound(t *testing.T) {
 	ctx := context.Background()

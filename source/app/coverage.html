@@ -57,11 +57,11 @@
 				
 				<option value="file0">person-service/healthcheck/health_handler.go (100.0%)</option>
 				
-				<option value="file1">person-service/key_value/key_value.go (97.6%)</option>
+				<option value="file1">person-service/key_value/key_value.go (96.1%)</option>
 				
 				<option value="file2">person-service/middleware/api_key.go (100.0%)</option>
 				
-				<option value="file3">person-service/person_attributes/person_attributes.go (93.7%)</option>
+				<option value="file3">person-service/person_attributes/person_attributes.go (96.0%)</option>
 				
 				</select>
 			</div>
@@ -167,9 +167,14 @@ func (h *KeyValueHandler) SetValue(c echo.Context) error <span class="cov8" titl
                 })
         }</span>
 
-        // Set value in database
         <span class="cov8" title="1">ctx := context.Background()
-        err := h.queries.SetValue(ctx, db.SetValueParams{
+
+        // Check if key already exists to determine response status code
+        _, err := h.queries.GetKeyValue(ctx, req.Key)
+        isNewKey := errors.Is(err, pgx.ErrNoRows)
+
+        // Set value in database
+        err = h.queries.SetValue(ctx, db.SetValueParams{
                 Key:   req.Key,
                 Value: req.Value,
         })
@@ -204,6 +209,10 @@ func (h *KeyValueHandler) SetValue(c echo.Context) error <span class="cov8" titl
                 response["updated_at"] = record.UpdatedAt.Time
         }</span>
 
+        // Return 201 Created for new keys, 200 OK for updates
+        <span class="cov8" title="1">if isNewKey </span><span class="cov8" title="1">{
+                return c.JSON(http.StatusCreated, response)
+        }</span>
         <span class="cov8" title="1">return c.JSON(http.StatusOK, response)</span>
 }
 
@@ -261,11 +270,27 @@ func (h *KeyValueHandler) DeleteValue(c echo.Context) error <span class="cov8" t
                 })
         }</span>
 
-        // Delete value from database
         <span class="cov8" title="1">ctx := context.Background()
-        err := h.queries.DeleteValue(ctx, key)
 
+        // Check if key exists before deleting
+        _, err := h.queries.GetKeyValue(ctx, key)
         if err != nil </span><span class="cov8" title="1">{
+                if errors.Is(err, pgx.ErrNoRows) </span><span class="cov8" title="1">{
+                        return c.JSON(http.StatusNotFound, errs.ErrorResponse{
+                                Message:   "Key not found",
+                                ErrorCode: errs.ErrKVKeyNotFound,
+                        })
+                }</span>
+                <span class="cov8" title="1">return c.JSON(http.StatusInternalServerError, errs.ErrorResponse{
+                        Message:   "Failed to retrieve value",
+                        ErrorCode: errs.ErrKVFailedRetrieveValue,
+                })</span>
+        }
+
+        // Delete value from database
+        <span class="cov8" title="1">err = h.queries.DeleteValue(ctx, key)
+
+        if err != nil </span><span class="cov0" title="0">{
                 return c.JSON(http.StatusInternalServerError, errs.ErrorResponse{
                         Message:   "Failed to delete value",
                         ErrorCode: errs.ErrKVFailedDeleteValue,
@@ -581,7 +606,7 @@ func (h *PersonAttributesHandler) GetAllAttributes(c echo.Context) error <span c
                 EncKey:   h.encryptionKey,
         })
 
-        if err != nil </span><span class="cov0" title="0">{
+        if err != nil </span><span class="cov8" title="1">{
                 return c.JSON(http.StatusInternalServerError, errs.ErrorResponse{
                         Message:   "Failed to retrieve attributes",
                         ErrorCode: errs.ErrFailedRetrieveAttributes,
@@ -654,7 +679,7 @@ func (h *PersonAttributesHandler) GetAttribute(c echo.Context) error <span class
                 EncKey:   h.encryptionKey,
         })
 
-        if err != nil </span><span class="cov0" title="0">{
+        if err != nil </span><span class="cov8" title="1">{
                 return c.JSON(http.StatusInternalServerError, errs.ErrorResponse{
                         Message:   "Failed to retrieve attributes",
                         ErrorCode: errs.ErrFailedRetrieveAttributes,
@@ -748,7 +773,7 @@ func (h *PersonAttributesHandler) UpdateAttribute(c echo.Context) error <span cl
                 EncKey:   h.encryptionKey,
         })
 
-        if err != nil </span><span class="cov0" title="0">{
+        if err != nil </span><span class="cov8" title="1">{
                 return c.JSON(http.StatusInternalServerError, errs.ErrorResponse{
                         Message:   "Failed to retrieve attributes",
                         ErrorCode: errs.ErrFailedRetrieveAttributes,
@@ -885,7 +910,7 @@ func (h *PersonAttributesHandler) DeleteAttribute(c echo.Context) error <span cl
                 EncKey:   h.encryptionKey,
         })
 
-        if err != nil </span><span class="cov0" title="0">{
+        if err != nil </span><span class="cov8" title="1">{
                 return c.JSON(http.StatusInternalServerError, errs.ErrorResponse{
                         Message:   "Failed to retrieve attributes",
                         ErrorCode: errs.ErrFailedRetrieveAttributes,

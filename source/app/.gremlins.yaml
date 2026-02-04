@@ -1,0 +1,25 @@
+# Gremlins mutation testing configuration
+# Focus mutation testing on business logic, exclude infrastructure code
+
+# Exclude patterns - files that shouldn't be mutated
+exclude:
+  - "main.go"              # Application entry point (hard to unit test)
+  - "internal/testdb/**"   # Test utilities
+  - "**/testutil/**"       # Test utilities
+  - "integration/**"       # Integration test code
+
+# Test command configuration
+test_command: "go"
+test_args:
+  - "test"
+  - "-tags"
+  - "!integration"
+  - "-timeout"
+  - "30s"
+  - "./..."
+
+# Timeout for individual mutations
+timeout: 30
+
+# Number of workers for parallel mutation testing
+workers: 4
