@@ -13,10 +13,12 @@ import (
 )
 
 var (
-	pgContainer *postgres.PostgresContainer
-	pool        *pgxpool.Pool
-	once        sync.Once
-	initErr     error
+	pgContainer    *postgres.PostgresContainer
+	pool           *pgxpool.Pool
+	once           sync.Once
+	migrationsOnce sync.Once
+	initErr        error
+	migrationsErr  error
 )
 
 const (

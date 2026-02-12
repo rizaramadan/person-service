@@ -14,10 +14,12 @@ import (
 )
 
 var (
-	pgContainer *postgres.PostgresContainer
-	pool        *pgxpool.Pool
-	once        sync.Once
-	initErr     error
+	pgContainer   *postgres.PostgresContainer
+	pool          *pgxpool.Pool
+	once          sync.Once
+	migrationsOnce sync.Once
+	initErr       error
+	migrationsErr error
 )
 
 const (
@@ -95,13 +97,15 @@ func GetConnectionString(ctx context.Context) (string, error) {
 	return pgContainer.ConnectionString(ctx, "sslmode=disable")
 }
 
-// RunMigrations executes the database schema
+// RunMigrations executes the database schema (idempotent, runs only once)
 func RunMigrations(ctx context.Context, pool *pgxpool.Pool) error {
-	_, err := pool.Exec(ctx, schemaSQL)
-	if err != nil {
-		return fmt.Errorf("failed to run migrations: %w", err)
-	}
-	return nil
+	migrationsOnce.Do(func() {
+		_, migrationsErr = pool.Exec(ctx, schemaSQL)
+		if migrationsErr != nil {
+			migrationsErr = fmt.Errorf("failed to run migrations: %w", migrationsErr)
+		}
+	})
+	return migrationsErr
 }
 
 // TruncateTables clears all data from test tables for scenario isolation.

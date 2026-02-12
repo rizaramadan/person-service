@@ -11,13 +11,15 @@ import (
 //go:embed schema.sql
 var schemaSQL string
 
-// RunMigrations executes the database schema
+// RunMigrations executes the database schema (idempotent, runs only once)
 func RunMigrations(ctx context.Context, pool *pgxpool.Pool) error {
-	_, err := pool.Exec(ctx, schemaSQL)
-	if err != nil {
-		return fmt.Errorf("failed to run migrations: %w", err)
-	}
-	return nil
+	migrationsOnce.Do(func() {
+		_, migrationsErr = pool.Exec(ctx, schemaSQL)
+		if migrationsErr != nil {
+			migrationsErr = fmt.Errorf("failed to run migrations: %w", migrationsErr)
+		}
+	})
+	return migrationsErr
 }
 
 // TruncateTables clears all data from test tables for scenario isolation.
