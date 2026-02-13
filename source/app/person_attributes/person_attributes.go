@@ -1,13 +1,13 @@
 package person_attributes
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"net/http"
 	"os"
 	errs "person-service/errors"
 	db "person-service/internal/db/generated"
+	"person-service/logging"
 	"strconv"
 
 	"github.com/jackc/pgx/v5"
@@ -96,7 +96,8 @@ func (h *PersonAttributesHandler) CreateAttribute(c echo.Context) error {
 		})
 	}
 
-	ctx := context.Background()
+	// Use request context for trace propagation
+	ctx := c.Request().Context()
 
 	// Check if person exists
 	_, err = h.queries.GetPersonById(ctx, personID)
@@ -123,7 +124,7 @@ func (h *PersonAttributesHandler) CreateAttribute(c echo.Context) error {
 	})
 
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "ERROR: Failed to create attribute: %v\n", err)
+		logging.ErrorContext(ctx, "Failed to create attribute", "error", err)
 		return c.JSON(http.StatusInternalServerError, errs.ErrorResponse{
 			Message:   "Failed to create attribute",
 			ErrorCode: errs.ErrFailedCreateAttribute,
@@ -198,7 +199,8 @@ func (h *PersonAttributesHandler) GetAllAttributes(c echo.Context) error {
 		})
 	}
 
-	ctx := context.Background()
+	// Use request context for trace propagation
+	ctx := c.Request().Context()
 
 	// Check if person exists
 	_, err = h.queries.GetPersonById(ctx, personID)
@@ -271,7 +273,8 @@ func (h *PersonAttributesHandler) GetAttribute(c echo.Context) error {
 		})
 	}
 
-	ctx := context.Background()
+	// Use request context for trace propagation
+	ctx := c.Request().Context()
 
 	// Check if person exists
 	_, err = h.queries.GetPersonById(ctx, personID)
@@ -365,7 +368,8 @@ func (h *PersonAttributesHandler) UpdateAttribute(c echo.Context) error {
 		})
 	}
 
-	ctx := context.Background()
+	// Use request context for trace propagation
+	ctx := c.Request().Context()
 
 	// Check if person exists
 	_, err = h.queries.GetPersonById(ctx, personID)
@@ -502,7 +506,8 @@ func (h *PersonAttributesHandler) DeleteAttribute(c echo.Context) error {
 		})
 	}
 
-	ctx := context.Background()
+	// Use request context for trace propagation
+	ctx := c.Request().Context()
 
 	// Check if person exists
 	_, err = h.queries.GetPersonById(ctx, personID)

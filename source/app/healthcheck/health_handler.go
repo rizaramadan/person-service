@@ -1,7 +1,6 @@
 package health
 
 import (
-	"context"
 	"net/http"
 
 	errs "person-service/errors"
@@ -24,8 +23,11 @@ func NewHealthCheckHandler(queries *db.Queries) *HealthCheckHandler {
 
 // Check performs a health check on the database and returns the result as an echo handler
 func (h *HealthCheckHandler) Check(c echo.Context) error {
+	// Use request context for trace propagation
+	ctx := c.Request().Context()
+
 	// Call HealthCheck directly
-	err := h.queries.HealthCheck(context.Background())
+	err := h.queries.HealthCheck(ctx)
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, errs.ErrorResponse{
 			Message:   err.Error(),

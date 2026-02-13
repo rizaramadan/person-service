@@ -1,7 +1,6 @@
 package key_value
 
 import (
-	"context"
 	"errors"
 	"net/http"
 	errs "person-service/errors"
@@ -48,7 +47,8 @@ func (h *KeyValueHandler) SetValue(c echo.Context) error {
 		})
 	}
 
-	ctx := context.Background()
+	// Use request context for trace propagation
+	ctx := c.Request().Context()
 
 	// Check if key already exists to determine response status code
 	_, err := h.queries.GetKeyValue(ctx, req.Key)
@@ -107,8 +107,8 @@ func (h *KeyValueHandler) GetValue(c echo.Context) error {
 		})
 	}
 
-	// Get full record from database
-	ctx := context.Background()
+	// Use request context for trace propagation
+	ctx := c.Request().Context()
 	record, err := h.queries.GetKeyValue(ctx, key)
 
 	if err != nil {
@@ -151,7 +151,8 @@ func (h *KeyValueHandler) DeleteValue(c echo.Context) error {
 		})
 	}
 
-	ctx := context.Background()
+	// Use request context for trace propagation
+	ctx := c.Request().Context()
 
 	// Check if key exists before deleting
 	_, err := h.queries.GetKeyValue(ctx, key)

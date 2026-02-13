@@ -22,9 +22,17 @@
       "Bash(/Users/ramad/go/bin/gremlins unleash:*)",
       "Bash(/Users/ramad/go/bin/gremlins:*)",
       "Bash(go clean:*)",
-      "Bash(ls:*)"
+      "Bash(ls:*)",
+      "Bash(gopls version:*)",
+      "Bash(find:*)",
+      "Bash(make test-unit:*)",
+      "Bash(make test:*)",
+      "Bash(make test-only:*)"
     ]
   },
+  "enabledMcpjsonServers": [
+    "serena"
+  ],
   "remote": {
     "defaultEnvironmentId": "env_011HTka4tS6pRWHnsffdkhQL"
   }

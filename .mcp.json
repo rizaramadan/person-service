@@ -1,0 +1,13 @@
+{
+  "mcpServers": {
+    "serena": {
+      "command": "uvx",
+      "args": [
+        "serena",
+        "start-mcp-server",
+        "--project-path",
+        "/Users/ramad/Works/Gti/person-services/person-service"
+      ]
+    }
+  }
+}
