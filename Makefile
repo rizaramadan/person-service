@@ -74,6 +74,10 @@ serve-coverage:
 	@echo "Serving coverage report at http://localhost:8181/report.html"
 	cd specs/coverage && python3 -m http.server 8181
 
+# lint SQL migrations with squawk (requires: npm install -g squawk-cli)
+lint-migrations:
+	squawk source/app/internal/db/migrations/*.up.sql
+
 # build the docker image and npm install in the specs folder. Make this the default target
 build:
 	cd source && docker compose build

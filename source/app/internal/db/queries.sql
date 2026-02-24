@@ -27,14 +27,14 @@ DELETE FROM key_value WHERE key = sqlc.arg(key);
 -- Insert a new request log entry with encrypted data
 INSERT INTO request_log (
     trace_id, 
-    caller, 
+    caller_info,
     reason, 
     encrypted_request_body, 
     encrypted_response_body, 
     key_version
 ) VALUES (
     sqlc.arg(trace_id), 
-    sqlc.arg(caller), 
+    sqlc.arg(caller_info),
     sqlc.arg(reason), 
     pgp_sym_encrypt(sqlc.arg(encrypted_request_body), sqlc.arg(enc_key)), 
     pgp_sym_encrypt(sqlc.arg(encrypted_response_body), sqlc.arg(enc_key)), 
@@ -46,7 +46,7 @@ INSERT INTO request_log (
 SELECT 
     id,
     trace_id,
-    caller,
+    caller_info,
     reason,
     pgp_sym_decrypt(encrypted_request_body, sqlc.arg(enc_key)) AS request_body,
     pgp_sym_decrypt(encrypted_response_body, sqlc.arg(enc_key)) AS response_body,
@@ -121,31 +121,48 @@ LIMIT sqlc.arg(limit_count) OFFSET sqlc.arg(offset_count);
 -- name: CreateOrUpdatePersonAttribute :one
 -- Create or update a person attribute with encryption
 INSERT INTO person_attributes (
-    person_id, 
-    attribute_key, 
-    encrypted_value, 
-    key_version
+    person_id,
+    attribute_key,
+    encrypted_value,
+    key_version,
+    version
 ) VALUES (
-    sqlc.arg(person_id), 
-    sqlc.arg(attribute_key), 
-    pgp_sym_encrypt(sqlc.arg(attribute_value), sqlc.arg(enc_key)), 
-    sqlc.arg(key_version)
+    sqlc.arg(person_id),
+    sqlc.arg(attribute_key),
+    pgp_sym_encrypt(sqlc.arg(attribute_value), sqlc.arg(enc_key)),
+    sqlc.arg(key_version),
+    1
 )
-ON CONFLICT (person_id, attribute_key) 
-DO UPDATE SET 
+ON CONFLICT (person_id, attribute_key)
+DO UPDATE SET
     encrypted_value = pgp_sym_encrypt(sqlc.arg(attribute_value), sqlc.arg(enc_key)),
     key_version = sqlc.arg(key_version),
+    version = person_attributes.version + 1,
     updated_at = CURRENT_TIMESTAMP
-RETURNING id, person_id, attribute_key, key_version, created_at, updated_at;
+RETURNING id, person_id, attribute_key, key_version, version, created_at, updated_at;
+
+-- name: UpdatePersonAttributeWithVersion :one
+-- Update a person attribute with optimistic locking (version check)
+UPDATE person_attributes
+SET
+    encrypted_value = pgp_sym_encrypt(sqlc.arg(attribute_value), sqlc.arg(enc_key)),
+    key_version = sqlc.arg(key_version),
+    version = version + 1,
+    updated_at = CURRENT_TIMESTAMP
+WHERE person_id = sqlc.arg(person_id)
+    AND attribute_key = sqlc.arg(attribute_key)
+    AND version = sqlc.arg(expected_version)
+RETURNING id, person_id, attribute_key, key_version, version, created_at, updated_at;
 
 -- name: GetPersonAttribute :one
 -- Get a single decrypted attribute for a person
-SELECT 
+SELECT
     id,
     person_id,
     attribute_key,
     pgp_sym_decrypt(encrypted_value, sqlc.arg(enc_key)) AS attribute_value,
     key_version,
+    version,
     created_at,
     updated_at
 FROM person_attributes
@@ -154,12 +171,13 @@ LIMIT 1;
 
 -- name: GetAllPersonAttributes :many
 -- Get all decrypted attributes for a person
-SELECT 
+SELECT
     id,
     person_id,
     attribute_key,
     pgp_sym_decrypt(encrypted_value, sqlc.arg(enc_key)) AS attribute_value,
     key_version,
+    version,
     created_at,
     updated_at
 FROM person_attributes
@@ -168,12 +186,13 @@ ORDER BY attribute_key;
 
 -- name: GetMultiplePersonAttributes :many
 -- Get multiple specific attributes for a person (pass array of keys)
-SELECT 
+SELECT
     id,
     person_id,
     attribute_key,
     pgp_sym_decrypt(encrypted_value, sqlc.arg(enc_key)) AS attribute_value,
     key_version,
+    version,
     created_at,
     updated_at
 FROM person_attributes

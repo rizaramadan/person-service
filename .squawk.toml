@@ -1,0 +1,11 @@
+# Squawk configuration for SQL migration linting
+# https://squawkhq.com/docs/configuration
+
+# Exclude rules that don't apply to initial schema migrations:
+# - require-concurrent-index-creation: CONCURRENTLY can't be used inside transactions
+#   (golang-migrate runs each file in a transaction). Safe for initial schema on empty tables.
+# - prefer-robust-stmts: Initial schema is always run once, idempotency guards aren't needed.
+excluded_rules = [
+    "require-concurrent-index-creation",
+    "prefer-robust-stmts",
+]

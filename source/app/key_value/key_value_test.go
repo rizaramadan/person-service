@@ -623,8 +623,8 @@ func TestSetValue_KeyTooLong(t *testing.T) {
 
 	err = handler.SetValue(c)
 	assert.NoError(t, err)
-	// Should fail due to VARCHAR constraint
-	assert.Equal(t, http.StatusInternalServerError, rec.Code)
+	// text type has no length constraint, so long keys are accepted
+	assert.Equal(t, http.StatusCreated, rec.Code)
 }
 
 // TestSetValue_MaxValueLength tests value at maximum VARCHAR(255) length
@@ -672,8 +672,8 @@ func TestSetValue_ValueTooLong(t *testing.T) {
 
 	err = handler.SetValue(c)
 	assert.NoError(t, err)
-	// Should fail due to VARCHAR constraint
-	assert.Equal(t, http.StatusInternalServerError, rec.Code)
+	// text type has no length constraint, so long values are accepted
+	assert.Equal(t, http.StatusCreated, rec.Code)
 }
 
 // TestSetValue_SpecialCharacters tests special characters in key and value

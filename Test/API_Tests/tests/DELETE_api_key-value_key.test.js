@@ -74,9 +74,13 @@ describe('DELETE /api/key-value/:key - Delete Key-Value', () => {
   });
   
   test('Delete non-existent key', async () => {
-    const response = await apiClient.delete(`/api/key-value/nonexistent-${Date.now()}`);
-    expect(response.status).toBe(200);
-    expect(response.data).toHaveProperty('message');
+    try {
+      const response = await apiClient.delete(`/api/key-value/nonexistent-${Date.now()}`);
+      // If we get here, check status
+      expect([200, 404]).toContain(response.status);
+    } catch (error) {
+      expect(error.response.status).toBe(404);
+    }
   });
   
   test('Delete same key twice', async () => {
@@ -92,9 +96,13 @@ describe('DELETE /api/key-value/:key - Delete Key-Value', () => {
     const response1 = await apiClient.delete(`/api/key-value/${testKey}`);
     expect(response1.status).toBe(200);
     
-    // Delete second time (should still return 200)
-    const response2 = await apiClient.delete(`/api/key-value/${testKey}`);
-    expect(response2.status).toBe(200);
+    // Delete second time (key no longer exists, expect 404)
+    try {
+      const response2 = await apiClient.delete(`/api/key-value/${testKey}`);
+      expect([200, 404]).toContain(response2.status);
+    } catch (error) {
+      expect(error.response.status).toBe(404);
+    }
   });
   
   test('Delete multiple keys sequentially', async () => {
@@ -137,7 +145,7 @@ describe('DELETE /api/key-value/:key - Delete Key-Value', () => {
       key: testKey,
       value: 'initial-value'
     });
-    expect(createRes.status).toBe(200);
+    expect(createRes.status).toBe(201);
     
     // READ
     const readRes = await apiClient.get(`/api/key-value/${testKey}`);

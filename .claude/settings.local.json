@@ -27,7 +27,15 @@
       "Bash(find:*)",
       "Bash(make test-unit:*)",
       "Bash(make test:*)",
-      "Bash(make test-only:*)"
+      "Bash(make test-only:*)",
+      "Bash(docker compose:*)",
+      "Bash(tail:*)",
+      "Bash(docker ps:*)",
+      "Bash(head:*)",
+      "Bash(PGPASSWORD=mainmain psql:*)",
+      "Bash(npm run:*)",
+      "Bash(cd /Users/ramad/Works/Gti/person-services/person-service/source/app/internal/db && sqlc generate 2>&1)",
+      "Bash(squawk:*)"
     ]
   },
   "enabledMcpjsonServers": [

@@ -14,7 +14,8 @@ const (
 	ErrInvalidRequestBody       = "PA_003_INVALID_REQUEST_BODY"
 	ErrMissingRequiredFieldKey  = "PA_004_MISSING_KEY"
 	ErrMissingRequiredFieldMeta = "PA_005_MISSING_META"
-	ErrInvalidAttributeIDFormat = "PA_006_INVALID_ATTRIBUTE_ID_FORMAT"
+	ErrInvalidAttributeIDFormat  = "PA_006_INVALID_ATTRIBUTE_ID_FORMAT"
+	ErrMissingRequiredFieldValue = "PA_007_MISSING_VALUE"
 
 	// Resource not found errors (1100-1199)
 	ErrPersonNotFound    = "PA_101_PERSON_NOT_FOUND"
@@ -29,6 +30,7 @@ const (
 	ErrFailedRetrieveUpdatedAttr = "PA_206_FAILED_RETRIEVE_UPDATED"
 	ErrFailedDeleteAttribute     = "PA_207_FAILED_DELETE_ATTRIBUTE"
 	ErrFailedUpdateAttributeKey  = "PA_208_FAILED_UPDATE_KEY"
+	ErrVersionConflict           = "PA_209_VERSION_CONFLICT"
 
 	// Audit logging errors (1300-1399)
 	ErrFailedAuditLog = "PA_301_FAILED_AUDIT_LOG"

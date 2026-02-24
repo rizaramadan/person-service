@@ -11,3 +11,5 @@ package-lock.json
 *.out
 coverage*.out
 source/app/person-service
+vendor/
+.claude/settings.local.json

@@ -66,7 +66,7 @@ describe('NEGATIVE: DELETE /persons/:personId/attributes/:attributeId', () => {
     
     try {
       await clientWithoutAuth.delete(
-        `/persons/${testPersonId}/attributes/660e8400-e29b-41d4-a716-446655440000`
+        `/persons/${testPersonId}/attributes/999999`
       );
       fail('Should have thrown 401');
     } catch (error) {
@@ -85,7 +85,7 @@ describe('NEGATIVE: DELETE /persons/:personId/attributes/:attributeId', () => {
     
     try {
       await clientWithInvalidKey.delete(
-        `/persons/${testPersonId}/attributes/660e8400-e29b-41d4-a716-446655440000`
+        `/persons/${testPersonId}/attributes/999999`
       );
       fail('Should have thrown 401');
     } catch (error) {
@@ -100,7 +100,7 @@ describe('NEGATIVE: DELETE /persons/:personId/attributes/:attributeId', () => {
   test('Should return 404 for non-existent personId', async () => {
     try {
       await apiClient.delete(
-        '/persons/00000000-0000-0000-0000-000000000000/attributes/660e8400-e29b-41d4-a716-446655440000'
+        '/persons/00000000-0000-0000-0000-000000000000/attributes/999999'
       );
       fail('Should have thrown 404');
     } catch (error) {
@@ -111,7 +111,7 @@ describe('NEGATIVE: DELETE /persons/:personId/attributes/:attributeId', () => {
   test('Should return 404 for non-existent attributeId', async () => {
     try {
       await apiClient.delete(
-        `/persons/${testPersonId}/attributes/00000000-0000-0000-0000-000000000000`
+        `/persons/${testPersonId}/attributes/999999`
       );
       fail('Should have thrown 404');
     } catch (error) {
@@ -123,17 +123,17 @@ describe('NEGATIVE: DELETE /persons/:personId/attributes/:attributeId', () => {
     // First delete (doesn't exist)
     try {
       await apiClient.delete(
-        `/persons/${testPersonId}/attributes/770e8400-e29b-41d4-a716-446655440000`
+        `/persons/${testPersonId}/attributes/999998`
       );
       fail('Should have thrown 404');
     } catch (error) {
       expect(error.response.status).toBe(404);
     }
-    
+
     // Second delete (still doesn't exist)
     try {
       await apiClient.delete(
-        `/persons/${testPersonId}/attributes/770e8400-e29b-41d4-a716-446655440000`
+        `/persons/${testPersonId}/attributes/999998`
       );
       fail('Should have thrown 404');
     } catch (error) {
@@ -148,7 +148,7 @@ describe('NEGATIVE: DELETE /persons/:personId/attributes/:attributeId', () => {
   test('Should reject invalid UUID format for personId', async () => {
     try {
       await apiClient.delete(
-        '/persons/invalid-uuid/attributes/660e8400-e29b-41d4-a716-446655440000'
+        '/persons/invalid-uuid/attributes/999999'
       );
       fail('Should have thrown error');
     } catch (error) {
@@ -182,7 +182,7 @@ describe('NEGATIVE: DELETE /persons/:personId/attributes/:attributeId', () => {
   
   test('Should reject empty personId', async () => {
     try {
-      await apiClient.delete('/persons//attributes/660e8400-e29b-41d4-a716-446655440000');
+      await apiClient.delete('/persons//attributes/999999');
       fail('Should have thrown error');
     } catch (error) {
       expect([400, 404, 405]).toContain(error.response.status);
@@ -205,7 +205,7 @@ describe('NEGATIVE: DELETE /persons/:personId/attributes/:attributeId', () => {
   test('Should ignore request body on DELETE', async () => {
     try {
       await apiClient.delete(
-        `/persons/${testPersonId}/attributes/660e8400-e29b-41d4-a716-446655440000`,
+        `/persons/${testPersonId}/attributes/999997`,
         {
           data: {
             unexpected: 'body',
@@ -227,7 +227,7 @@ describe('NEGATIVE: DELETE /persons/:personId/attributes/:attributeId', () => {
   test('Should handle SQL injection in personId', async () => {
     try {
       await apiClient.delete(
-        "/persons/'; DROP TABLE person; --/attributes/660e8400-e29b-41d4-a716-446655440000"
+        "/persons/'; DROP TABLE person; --/attributes/999999"
       );
       fail('Should have thrown error');
     } catch (error) {
@@ -249,7 +249,7 @@ describe('NEGATIVE: DELETE /persons/:personId/attributes/:attributeId', () => {
   test('Should prevent path traversal', async () => {
     try {
       await apiClient.delete(
-        '/persons/../../../etc/passwd/attributes/660e8400-e29b-41d4-a716-446655440000'
+        '/persons/../../../etc/passwd/attributes/999999'
       );
       fail('Should have thrown error');
     } catch (error) {
@@ -275,7 +275,7 @@ describe('NEGATIVE: DELETE /persons/:personId/attributes/:attributeId', () => {
   test('Should reject POST method on DELETE endpoint', async () => {
     try {
       await apiClient.post(
-        `/persons/${testPersonId}/attributes/660e8400-e29b-41d4-a716-446655440000`
+        `/persons/${testPersonId}/attributes/999999`
       );
       fail('Should have thrown error');
     } catch (error) {
@@ -286,7 +286,7 @@ describe('NEGATIVE: DELETE /persons/:personId/attributes/:attributeId', () => {
   test('Should reject PATCH method', async () => {
     try {
       await apiClient.patch(
-        `/persons/${testPersonId}/attributes/660e8400-e29b-41d4-a716-446655440000`
+        `/persons/${testPersonId}/attributes/999999`
       );
       fail('Should have thrown error');
     } catch (error) {
@@ -299,15 +299,15 @@ describe('NEGATIVE: DELETE /persons/:personId/attributes/:attributeId', () => {
   // ========================================
   
   test('Should handle multiple concurrent DELETEs of same attribute', async () => {
-    const nonExistentId = '880e8400-e29b-41d4-a716-446655440000';
-    
+    const nonExistentId = '999996';
+
     // Attempt 3 simultaneous deletes
-    const deletes = Array(3).fill(null).map(() => 
+    const deletes = Array(3).fill(null).map(() =>
       apiClient.delete(`/persons/${testPersonId}/attributes/${nonExistentId}`)
     );
-    
+
     const results = await Promise.allSettled(deletes);
-    
+
     // All should return 404 (doesn't exist)
     results.forEach(result => {
       if (result.status === 'rejected') {
@@ -323,7 +323,7 @@ describe('NEGATIVE: DELETE /persons/:personId/attributes/:attributeId', () => {
   test('Should ignore invalid Content-Type header on DELETE', async () => {
     try {
       await apiClient.delete(
-        `/persons/${testPersonId}/attributes/660e8400-e29b-41d4-a716-446655440000`,
+        `/persons/${testPersonId}/attributes/999995`,
         {
           headers: {
             'Content-Type': 'application/invalid'

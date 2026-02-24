@@ -63,8 +63,8 @@ func GetRawAttributeValue(ctx context.Context, pool *pgxpool.Pool, personID, key
 }
 
 // GetAttributeKeyVersion returns the key_version for an attribute
-func GetAttributeKeyVersion(ctx context.Context, pool *pgxpool.Pool, personID, key string) (int32, error) {
-	var keyVersion int32
+func GetAttributeKeyVersion(ctx context.Context, pool *pgxpool.Pool, personID, key string) (int64, error) {
+	var keyVersion int64
 	err := pool.QueryRow(ctx, `
 		SELECT key_version
 		FROM person_attributes
@@ -118,7 +118,7 @@ func GetKeyValueDirect(ctx context.Context, pool *pgxpool.Pool, key string) (str
 // GetRequestLog returns an audit log entry by trace ID
 func GetRequestLog(ctx context.Context, pool *pgxpool.Pool, traceID, encKey string) (caller, reason string, err error) {
 	err = pool.QueryRow(ctx, `
-		SELECT caller, reason
+		SELECT caller_info, reason
 		FROM request_log
 		WHERE trace_id = $1
 	`, traceID).Scan(&caller, &reason)

@@ -22,12 +22,7 @@ func ParseGCPTraceHeader(header string) string {
 	}
 
 	// Split on "/" to get trace ID (first part)
-	parts := strings.Split(header, "/")
-	if len(parts) == 0 {
-		return ""
-	}
-
-	traceID := parts[0]
+	traceID := strings.Split(header, "/")[0]
 	if traceID == "" {
 		return ""
 	}

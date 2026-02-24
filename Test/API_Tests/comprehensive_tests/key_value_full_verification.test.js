@@ -87,7 +87,7 @@ describe('Key-Value API - Full CRUD with Database Verification', () => {
     console.log(`   Data:`, apiResponse.data);
     
     // Verify API response
-    expect(apiResponse.status).toBe(200);
+    expect(apiResponse.status).toBe(201);
     expect(apiResponse.data).toHaveProperty('key', testKey);
     expect(apiResponse.data).toHaveProperty('value', testValue);
     expect(apiResponse.data).toHaveProperty('created_at');

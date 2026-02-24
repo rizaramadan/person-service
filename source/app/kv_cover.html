@@ -1,0 +1,298 @@
+
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+		<title>key_value: Go Coverage Report</title>
+		<style>
+			body {
+				background: black;
+				color: rgb(80, 80, 80);
+			}
+			body, pre, #legend span {
+				font-family: Menlo, monospace;
+				font-weight: bold;
+			}
+			#topbar {
+				background: black;
+				position: fixed;
+				top: 0; left: 0; right: 0;
+				height: 42px;
+				border-bottom: 1px solid rgb(80, 80, 80);
+			}
+			#content {
+				margin-top: 50px;
+			}
+			#nav, #legend {
+				float: left;
+				margin-left: 10px;
+			}
+			#legend {
+				margin-top: 12px;
+			}
+			#nav {
+				margin-top: 10px;
+			}
+			#legend span {
+				margin: 0 5px;
+			}
+			.cov0 { color: rgb(192, 0, 0) }
+.cov1 { color: rgb(128, 128, 128) }
+.cov2 { color: rgb(116, 140, 131) }
+.cov3 { color: rgb(104, 152, 134) }
+.cov4 { color: rgb(92, 164, 137) }
+.cov5 { color: rgb(80, 176, 140) }
+.cov6 { color: rgb(68, 188, 143) }
+.cov7 { color: rgb(56, 200, 146) }
+.cov8 { color: rgb(44, 212, 149) }
+.cov9 { color: rgb(32, 224, 152) }
+.cov10 { color: rgb(20, 236, 155) }
+
+		</style>
+	</head>
+	<body>
+		<div id="topbar">
+			<div id="nav">
+				<select id="files">
+				
+				<option value="file0">person-service/key_value/key_value.go (96.1%)</option>
+				
+				</select>
+			</div>
+			<div id="legend">
+				<span>not tracked</span>
+			
+				<span class="cov0">no coverage</span>
+				<span class="cov1">low coverage</span>
+				<span class="cov2">*</span>
+				<span class="cov3">*</span>
+				<span class="cov4">*</span>
+				<span class="cov5">*</span>
+				<span class="cov6">*</span>
+				<span class="cov7">*</span>
+				<span class="cov8">*</span>
+				<span class="cov9">*</span>
+				<span class="cov10">high coverage</span>
+			
+			</div>
+		</div>
+		<div id="content">
+		
+		<pre class="file" id="file0" style="display: none">package key_value
+
+import (
+        "errors"
+        "net/http"
+        errs "person-service/errors"
+        db "person-service/internal/db/generated"
+
+        "github.com/jackc/pgx/v5"
+        "github.com/labstack/echo/v4"
+)
+
+// SetValueRequest represents the request body for setting a key-value pair
+type SetValueRequest struct {
+        Key   string `json:"key" validate:"required"`
+        Value string `json:"value" validate:"required"`
+}
+
+// KeyValueHandler handles KeyValue
+type KeyValueHandler struct {
+        queries *db.Queries
+}
+
+// KeyValueHandler creates a new instance of KeyValueHandler with injected queries
+func NewKeyValueHandler(queries *db.Queries) *KeyValueHandler <span class="cov9" title="33">{
+        return &amp;KeyValueHandler{
+                queries: queries,
+        }
+}</span>
+
+// SetValue handles POST /api/key_value - sets or updates a key-value pair
+func (h *KeyValueHandler) SetValue(c echo.Context) error <span class="cov10" title="47">{
+        // Parse request body
+        var req SetValueRequest
+        if err := c.Bind(&amp;req); err != nil </span><span class="cov2" title="2">{
+                return c.JSON(http.StatusBadRequest, errs.ErrorResponse{
+                        Message:   "Invalid request body",
+                        ErrorCode: errs.ErrKVInvalidRequestBody,
+                })
+        }</span>
+
+        // Validate required fields
+        <span class="cov9" title="45">if req.Key == "" || req.Value == "" </span><span class="cov3" title="3">{
+                return c.JSON(http.StatusBadRequest, errs.ErrorResponse{
+                        Message:   "Key and value are required",
+                        ErrorCode: errs.ErrKVMissingKeyOrValue,
+                })
+        }</span>
+
+        // Use request context for trace propagation
+        <span class="cov9" title="42">ctx := c.Request().Context()
+
+        // Check if key already exists to determine response status code
+        _, err := h.queries.GetKeyValue(ctx, req.Key)
+        isNewKey := errors.Is(err, pgx.ErrNoRows)
+
+        // Set value in database
+        err = h.queries.SetValue(ctx, db.SetValueParams{
+                Key:   req.Key,
+                Value: req.Value,
+        })
+
+        if err != nil </span><span class="cov1" title="1">{
+                return c.JSON(http.StatusInternalServerError, errs.ErrorResponse{
+                        Message:   "Failed to set value",
+                        ErrorCode: errs.ErrKVFailedSetValue,
+                })
+        }</span>
+
+        // Retrieve the full record with timestamps
+        <span class="cov9" title="41">record, err := h.queries.GetKeyValue(ctx, req.Key)
+        if err != nil </span><span class="cov0" title="0">{
+                return c.JSON(http.StatusInternalServerError, errs.ErrorResponse{
+                        Message:   "Failed to retrieve value",
+                        ErrorCode: errs.ErrKVFailedRetrieveValue,
+                })
+        }</span>
+
+        // Return success with the full key-value record
+        <span class="cov9" title="41">response := map[string]interface{}{
+                "key":   record.Key,
+                "value": record.Value,
+        }
+
+        // Add timestamps if they are valid
+        if record.CreatedAt.Valid </span><span class="cov9" title="41">{
+                response["created_at"] = record.CreatedAt.Time
+        }</span>
+        <span class="cov9" title="41">if record.UpdatedAt.Valid </span><span class="cov9" title="41">{
+                response["updated_at"] = record.UpdatedAt.Time
+        }</span>
+
+        // Return 201 Created for new keys, 200 OK for updates
+        <span class="cov9" title="41">if isNewKey </span><span class="cov9" title="37">{
+                return c.JSON(http.StatusCreated, response)
+        }</span>
+        <span class="cov4" title="4">return c.JSON(http.StatusOK, response)</span>
+}
+
+// GetValue handles GET /api/key_value/:key - retrieves a value by key
+func (h *KeyValueHandler) GetValue(c echo.Context) error <span class="cov8" title="23">{
+        key := c.Param("key")
+        if key == "" </span><span class="cov2" title="2">{
+                return c.JSON(http.StatusBadRequest, errs.ErrorResponse{
+                        Message:   "Key parameter is required",
+                        ErrorCode: errs.ErrKVMissingKeyParam,
+                })
+        }</span>
+
+        // Use request context for trace propagation
+        <span class="cov8" title="21">ctx := c.Request().Context()
+        record, err := h.queries.GetKeyValue(ctx, key)
+
+        if err != nil </span><span class="cov5" title="6">{
+                if errors.Is(err, pgx.ErrNoRows) </span><span class="cov4" title="5">{
+                        return c.JSON(http.StatusNotFound, errs.ErrorResponse{
+                                Message:   "Key not found",
+                                ErrorCode: errs.ErrKVKeyNotFound,
+                        })
+                }</span>
+                <span class="cov1" title="1">return c.JSON(http.StatusInternalServerError, errs.ErrorResponse{
+                        Message:   "Failed to retrieve value",
+                        ErrorCode: errs.ErrKVFailedRetrieveValue,
+                })</span>
+        }
+
+        // Return the full key-value record
+        <span class="cov7" title="15">response := map[string]interface{}{
+                "key":   record.Key,
+                "value": record.Value,
+        }
+
+        // Add timestamps if they are valid
+        if record.CreatedAt.Valid </span><span class="cov7" title="15">{
+                response["created_at"] = record.CreatedAt.Time
+        }</span>
+        <span class="cov7" title="15">if record.UpdatedAt.Valid </span><span class="cov7" title="15">{
+                response["updated_at"] = record.UpdatedAt.Time
+        }</span>
+
+        <span class="cov7" title="15">return c.JSON(http.StatusOK, response)</span>
+}
+
+// DeleteValue handles DELETE /api/key_value/:key - deletes a key-value pair
+func (h *KeyValueHandler) DeleteValue(c echo.Context) error <span class="cov5" title="7">{
+        key := c.Param("key")
+        if key == "" </span><span class="cov1" title="1">{
+                return c.JSON(http.StatusBadRequest, errs.ErrorResponse{
+                        Message:   "Key parameter is required",
+                        ErrorCode: errs.ErrKVMissingKeyParam,
+                })
+        }</span>
+
+        // Use request context for trace propagation
+        <span class="cov5" title="6">ctx := c.Request().Context()
+
+        // Check if key exists before deleting
+        _, err := h.queries.GetKeyValue(ctx, key)
+        if err != nil </span><span class="cov4" title="5">{
+                if errors.Is(err, pgx.ErrNoRows) </span><span class="cov4" title="4">{
+                        return c.JSON(http.StatusNotFound, errs.ErrorResponse{
+                                Message:   "Key not found",
+                                ErrorCode: errs.ErrKVKeyNotFound,
+                        })
+                }</span>
+                <span class="cov1" title="1">return c.JSON(http.StatusInternalServerError, errs.ErrorResponse{
+                        Message:   "Failed to retrieve value",
+                        ErrorCode: errs.ErrKVFailedRetrieveValue,
+                })</span>
+        }
+
+        // Delete value from database
+        <span class="cov1" title="1">err = h.queries.DeleteValue(ctx, key)
+
+        if err != nil </span><span class="cov0" title="0">{
+                return c.JSON(http.StatusInternalServerError, errs.ErrorResponse{
+                        Message:   "Failed to delete value",
+                        ErrorCode: errs.ErrKVFailedDeleteValue,
+                })
+        }</span>
+
+        // Return success message
+        <span class="cov1" title="1">return c.JSON(http.StatusOK, map[string]interface{}{
+                "message": "Key deleted successfully",
+        })</span>
+}
+</pre>
+		
+		</div>
+	</body>
+	<script>
+	(function() {
+		var files = document.getElementById('files');
+		var visible;
+		files.addEventListener('change', onChange, false);
+		function select(part) {
+			if (visible)
+				visible.style.display = 'none';
+			visible = document.getElementById(part);
+			if (!visible)
+				return;
+			files.value = part;
+			visible.style.display = 'block';
+			location.hash = part;
+		}
+		function onChange() {
+			select(files.value);
+			window.scrollTo(0, 0);
+		}
+		if (location.hash != "") {
+			select(location.hash.substr(1));
+		}
+		if (!visible) {
+			select("file0");
+		}
+	})();
+	</script>
+</html>

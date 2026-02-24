@@ -59,7 +59,7 @@ describe('NEGATIVE: POST /api/key-value - Create/Update Key-Value', () => {
       fail('Should have thrown error');
     } catch (error) {
       expect(error.response.status).toBe(400);
-      expect(error.response.data).toHaveProperty('error');
+      expect(error.response.data).toHaveProperty('message');
     }
   });
   
@@ -72,7 +72,7 @@ describe('NEGATIVE: POST /api/key-value - Create/Update Key-Value', () => {
       fail('Should have thrown error');
     } catch (error) {
       expect(error.response.status).toBe(400);
-      expect(error.response.data).toHaveProperty('error');
+      expect(error.response.data).toHaveProperty('message');
     }
   });
   
@@ -288,7 +288,7 @@ describe('NEGATIVE: POST /api/key-value - Create/Update Key-Value', () => {
         value: 'test-value'
       });
       
-      if (response.status === 200) {
+      if ([200, 201].includes(response.status)) {
         testKeys.push(specialKey);
         // Accepted - verify in DB
         const dbCheck = await dbClient.query(
@@ -319,7 +319,7 @@ describe('NEGATIVE: POST /api/key-value - Create/Update Key-Value', () => {
     });
     
     // Should succeed (extra fields ignored)
-    expect(response.status).toBe(200);
+    expect([200, 201]).toContain(response.status);
     testKeys.push(testKey);
   });
 });

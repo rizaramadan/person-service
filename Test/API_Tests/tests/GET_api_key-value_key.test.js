@@ -70,10 +70,10 @@ describe('GET /api/key-value/:key - Retrieve Value', () => {
       fail('Should have thrown error');
     } catch (error) {
       expect([404, 500]).toContain(error.response.status);
-      expect(error.response.data).toHaveProperty('error');
+      expect(error.response.data).toHaveProperty('message');
     }
   });
-  
+
   test('Get key with special characters', async () => {
     const testKey = `special-key-${Date.now()}`;
     testKeys.push(testKey);

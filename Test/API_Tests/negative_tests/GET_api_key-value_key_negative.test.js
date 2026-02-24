@@ -31,10 +31,10 @@ describe('NEGATIVE: GET /api/key-value/:key - Retrieve Value', () => {
       fail('Should have thrown 404');
     } catch (error) {
       expect([404, 500]).toContain(error.response.status);
-      expect(error.response.data).toHaveProperty('error');
+      expect(error.response.data).toHaveProperty('message');
     }
   });
-  
+
   test('Should return 404 for random UUID as key', async () => {
     try {
       await apiClient.get('/api/key-value/550e8400-e29b-41d4-a716-446655440000');

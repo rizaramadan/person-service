@@ -8,19 +8,18 @@ WORKDIR /build
 
 # Copy go mod files from app directory
 COPY app/go.mod app/go.sum ./app/
-COPY app/vendor ./app/vendor
 
-# Download dependencies (skip if using vendor)
+# Download dependencies
 WORKDIR /build/app
-# RUN go mod download - not needed when using vendor
+RUN go mod download
 
 # Copy source code
 WORKDIR /build
 COPY app/ ./app/
 
-# Ensure go.sum is up to date and build the binary
+# Build the binary
 WORKDIR /build/app
-RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -mod=vendor -cover -o /build/person-service .
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -cover -o /build/person-service .
 
 # Stage 2: Runtime
 FROM alpine:3.18

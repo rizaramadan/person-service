@@ -1,25 +1,28 @@
+set lock_timeout = '1s';
+set statement_timeout = '5s';
+
 -- Enable pgcrypto extension for encryption
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
 CREATE EXTENSION IF NOT EXISTS citext;
 
 -- create Key Value table
 CREATE TABLE IF NOT EXISTS key_value (
-    key VARCHAR(255) PRIMARY KEY,
-    value VARCHAR(255) NOT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    key text PRIMARY KEY,
+    value text NOT NULL,
+    created_at timestamptz DEFAULT CURRENT_TIMESTAMP,
+    updated_at timestamptz DEFAULT CURRENT_TIMESTAMP
 );
 
 -- Request log table for idempotency with encryption
 CREATE TABLE IF NOT EXISTS request_log (
-    id SERIAL PRIMARY KEY,
-    trace_id VARCHAR(255) UNIQUE NOT NULL, -- for idempotency check
-    caller VARCHAR(512) NOT NULL,
-    reason VARCHAR(512) NOT NULL,
+    id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    trace_id text UNIQUE NOT NULL, -- for idempotency check
+    caller_info text NOT NULL,
+    reason text NOT NULL,
     encrypted_request_body BYTEA, -- encrypted using pgp_sym_encrypt
     encrypted_response_body BYTEA, -- encrypted using pgp_sym_encrypt
-    key_version INTEGER NOT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    key_version bigint NOT NULL,
+    created_at timestamptz DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE INDEX IF NOT EXISTS idx_request_log_trace_id ON request_log(trace_id);
@@ -27,45 +30,58 @@ CREATE INDEX IF NOT EXISTS idx_request_log_trace_id ON request_log(trace_id);
 -- Person table - stores person data
 CREATE TABLE IF NOT EXISTS person (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(), -- internal service id
-    client_id VARCHAR(255) UNIQUE NOT NULL, -- id from client system
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    deleted_at TIMESTAMP -- soft delete support
+    client_id text UNIQUE NOT NULL, -- id from client system
+    created_at timestamptz DEFAULT CURRENT_TIMESTAMP,
+    updated_at timestamptz DEFAULT CURRENT_TIMESTAMP,
+    deleted_at timestamptz -- soft delete support
 );
 
 CREATE INDEX IF NOT EXISTS idx_person_client_id ON person(client_id);
 
 -- Person attributes table - one-to-many with person
 CREATE TABLE IF NOT EXISTS person_attributes (
-    id SERIAL PRIMARY KEY,
-    person_id UUID NOT NULL REFERENCES person(id) ON DELETE CASCADE,
+    id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    person_id UUID NOT NULL,
     attribute_key citext NOT NULL,
     encrypted_value BYTEA, -- encrypted attribute value using pgp_sym_encrypt
-    key_version INTEGER NOT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    key_version bigint NOT NULL,
+    version bigint NOT NULL DEFAULT 1, -- optimistic concurrency control
+    created_at timestamptz DEFAULT CURRENT_TIMESTAMP,
+    updated_at timestamptz DEFAULT CURRENT_TIMESTAMP,
     UNIQUE(person_id, attribute_key) -- prevent duplicate attributes for same person
 );
+
+ALTER TABLE person_attributes
+    ADD CONSTRAINT fk_person_attributes_person
+    FOREIGN KEY (person_id) REFERENCES person(id) ON DELETE CASCADE
+    NOT VALID;
+ALTER TABLE person_attributes VALIDATE CONSTRAINT fk_person_attributes_person;
 
 CREATE INDEX IF NOT EXISTS idx_person_attributes_person_id ON person_attributes(person_id);
 CREATE INDEX IF NOT EXISTS idx_person_attributes_key ON person_attributes(attribute_key);
 
 -- Person images table - stores encrypted images separately for performance
 CREATE TABLE IF NOT EXISTS person_images (
-    id SERIAL PRIMARY KEY,
-    person_id UUID NOT NULL REFERENCES person(id) ON DELETE CASCADE,
+    id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    person_id UUID NOT NULL,
     attribute_key citext NOT NULL,
-    image_type VARCHAR(50) NOT NULL, -- 'profile', 'document', 'id_card', etc.
+    image_type text NOT NULL, -- 'profile', 'document', 'id_card', etc.
     encrypted_image_data BYTEA NOT NULL, -- encrypted image using pgp_sym_encrypt
-    key_version INTEGER NOT NULL DEFAULT 1, -- encryption key version
-    mime_type VARCHAR(100), -- 'image/jpeg', 'image/png', etc.
-    file_size BIGINT, -- original file size in bytes
-    width INTEGER,
-    height INTEGER,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    key_version bigint NOT NULL DEFAULT 1, -- encryption key version
+    mime_type text, -- 'image/jpeg', 'image/png', etc.
+    file_size bigint, -- original file size in bytes
+    width bigint,
+    height bigint,
+    created_at timestamptz DEFAULT CURRENT_TIMESTAMP,
+    updated_at timestamptz DEFAULT CURRENT_TIMESTAMP,
     UNIQUE(person_id, attribute_key) -- prevent duplicate images for same person
 );
+
+ALTER TABLE person_images
+    ADD CONSTRAINT fk_person_images_person
+    FOREIGN KEY (person_id) REFERENCES person(id) ON DELETE CASCADE
+    NOT VALID;
+ALTER TABLE person_images VALIDATE CONSTRAINT fk_person_images_person;
 
 CREATE INDEX IF NOT EXISTS idx_person_images_person_id ON person_images(person_id);
 CREATE INDEX IF NOT EXISTS idx_person_images_type ON person_images(image_type);

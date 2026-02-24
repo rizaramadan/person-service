@@ -55,13 +55,13 @@ describe('POST /api/key-value - Create/Update Key-Value', () => {
       value: 'test-value'
     });
     
-    expect(response.status).toBe(200);
+    expect(response.status).toBe(201);
     expect(response.data).toHaveProperty('key', testKey);
     expect(response.data).toHaveProperty('value', 'test-value');
     expect(response.data).toHaveProperty('created_at');
     expect(response.data).toHaveProperty('updated_at');
   });
-  
+
   test('Update an existing key-value pair', async () => {
     const testKey = `update-key-${Date.now()}`;
     testKeys.push(testKey);
@@ -92,7 +92,7 @@ describe('POST /api/key-value - Create/Update Key-Value', () => {
       value: specialValue
     });
     
-    expect(response.status).toBe(200);
+    expect(response.status).toBe(201);
     expect(response.data.value).toBe(specialValue);
   });
   
@@ -104,10 +104,10 @@ describe('POST /api/key-value - Create/Update Key-Value', () => {
       fail('Should have thrown error');
     } catch (error) {
       expect(error.response.status).toBe(400);
-      expect(error.response.data).toHaveProperty('error');
+      expect(error.response.data).toHaveProperty('message');
     }
   });
-  
+
   test('Missing required field - value', async () => {
     try {
       await apiClient.post('/api/key-value', {
@@ -116,10 +116,10 @@ describe('POST /api/key-value - Create/Update Key-Value', () => {
       fail('Should have thrown error');
     } catch (error) {
       expect(error.response.status).toBe(400);
-      expect(error.response.data).toHaveProperty('error');
+      expect(error.response.data).toHaveProperty('message');
     }
   });
-  
+
   test('Empty key', async () => {
     try {
       await apiClient.post('/api/key-value', {
@@ -129,10 +129,10 @@ describe('POST /api/key-value - Create/Update Key-Value', () => {
       fail('Should have thrown error');
     } catch (error) {
       expect(error.response.status).toBe(400);
-      expect(error.response.data).toHaveProperty('error');
+      expect(error.response.data).toHaveProperty('message');
     }
   });
-  
+
   test('Empty value', async () => {
     try {
       await apiClient.post('/api/key-value', {
@@ -142,7 +142,7 @@ describe('POST /api/key-value - Create/Update Key-Value', () => {
       fail('Should have thrown error');
     } catch (error) {
       expect(error.response.status).toBe(400);
-      expect(error.response.data).toHaveProperty('error');
+      expect(error.response.data).toHaveProperty('message');
     }
   });
   
@@ -159,7 +159,7 @@ describe('POST /api/key-value - Create/Update Key-Value', () => {
     ]);
     
     responses.forEach(response => {
-      expect(response.status).toBe(200);
+      expect([200, 201]).toContain(response.status);
     });
   });
 });

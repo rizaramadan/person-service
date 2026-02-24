@@ -93,16 +93,16 @@ describe('SPECIFICATION: Person Attributes - Business Logic', () => {
     console.log('🔵 Checking audit trail in request_log table...');
     
     const auditCheck = await dbClient.query(`
-      SELECT trace_id, caller, reason, created_at
+      SELECT trace_id, caller_info, reason, created_at
       FROM request_log
       WHERE trace_id = $1
     `, [traceId]);
-    
+
     if (auditCheck.rows.length > 0) {
       console.log(`   ✅ Audit trail found: ${auditCheck.rows.length} entries`);
-      console.log(`      Caller: ${auditCheck.rows[0].caller}`);
+      console.log(`      Caller: ${auditCheck.rows[0].caller_info}`);
       console.log(`      Reason: ${auditCheck.rows[0].reason}`);
-      expect(auditCheck.rows[0].caller).toBe('audit-test-suite');
+      expect(auditCheck.rows[0].caller_info).toBe('audit-test-suite');
       expect(auditCheck.rows[0].reason).toBe('testing-audit-trail');
     } else {
       console.log('   ⚠️  No audit trail found - audit logging might not be working');

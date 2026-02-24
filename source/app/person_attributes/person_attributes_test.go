@@ -73,7 +73,7 @@ func TestNewPersonAttributesHandler(t *testing.T) {
 	assert.NotNil(t, handler)
 	assert.Equal(t, queries, handler.queries)
 	assert.Equal(t, testEncryptionKey, handler.encryptionKey)
-	assert.Equal(t, int32(1), handler.keyVersion)
+	assert.Equal(t, int64(1), handler.keyVersion)
 }
 
 func TestNewPersonAttributesHandler_WithEnvVar(t *testing.T) {
@@ -2174,7 +2174,7 @@ func TestAuditLog_WithTraceID(t *testing.T) {
 
 	// Verify log details
 	var caller, reason string
-	err = pool.QueryRow(ctx, "SELECT caller, reason FROM request_log WHERE trace_id = $1", traceID).Scan(&caller, &reason)
+	err = pool.QueryRow(ctx, "SELECT caller_info, reason FROM request_log WHERE trace_id = $1", traceID).Scan(&caller, &reason)
 	assert.NoError(t, err)
 	assert.Equal(t, "test-caller", caller)
 	assert.Equal(t, "test-reason", reason)
@@ -2310,4 +2310,158 @@ func TestUpdateAttribute_SameKey(t *testing.T) {
 	`, personID, testEncryptionKey).Scan(&value)
 	assert.NoError(t, err)
 	assert.Equal(t, "updated-value", value, "Value should be updated")
+}
+
+// ============================================================================
+// ADDITIONAL COVERAGE TESTS
+// ============================================================================
+
+func TestCreateAttribute_MetaEmptyCaller(t *testing.T) {
+	queries := db.New(pool)
+	handler := NewPersonAttributesHandler(queries)
+
+	e := echo.New()
+	jsonBody := `{"key":"email","value":"test@example.com","meta":{"caller":"","reason":"testing","traceId":"123"}}`
+	req := httptest.NewRequest(http.MethodPut, "/persons/123e4567-e89b-12d3-a456-426614174000/attributes", strings.NewReader(jsonBody))
+	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+	rec := httptest.NewRecorder()
+	c := e.NewContext(req, rec)
+	c.SetParamNames("personId")
+	c.SetParamValues("123e4567-e89b-12d3-a456-426614174000")
+
+	err := handler.CreateAttribute(c)
+
+	assert.NoError(t, err)
+	assert.Equal(t, http.StatusBadRequest, rec.Code)
+	assert.Contains(t, rec.Body.String(), "Meta fields (caller, reason) are required")
+}
+
+func TestCreateAttribute_MetaEmptyReason(t *testing.T) {
+	queries := db.New(pool)
+	handler := NewPersonAttributesHandler(queries)
+
+	e := echo.New()
+	jsonBody := `{"key":"email","value":"test@example.com","meta":{"caller":"test","reason":"","traceId":"123"}}`
+	req := httptest.NewRequest(http.MethodPut, "/persons/123e4567-e89b-12d3-a456-426614174000/attributes", strings.NewReader(jsonBody))
+	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+	rec := httptest.NewRecorder()
+	c := e.NewContext(req, rec)
+	c.SetParamNames("personId")
+	c.SetParamValues("123e4567-e89b-12d3-a456-426614174000")
+
+	err := handler.CreateAttribute(c)
+
+	assert.NoError(t, err)
+	assert.Equal(t, http.StatusBadRequest, rec.Code)
+	assert.Contains(t, rec.Body.String(), "Meta fields (caller, reason) are required")
+}
+
+func TestUpdateAttribute_EmptyValue(t *testing.T) {
+	queries := db.New(pool)
+	handler := NewPersonAttributesHandler(queries)
+
+	e := echo.New()
+	jsonBody := `{"value":""}`
+	req := httptest.NewRequest(http.MethodPut, "/persons/123e4567-e89b-12d3-a456-426614174000/attributes/1", strings.NewReader(jsonBody))
+	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+	rec := httptest.NewRecorder()
+	c := e.NewContext(req, rec)
+	c.SetParamNames("personId", "attributeId")
+	c.SetParamValues("123e4567-e89b-12d3-a456-426614174000", "1")
+
+	err := handler.UpdateAttribute(c)
+
+	assert.NoError(t, err)
+	assert.Equal(t, http.StatusBadRequest, rec.Code)
+	assert.Contains(t, rec.Body.String(), "Value is required")
+}
+
+func TestUpdateAttribute_WhitespaceOnlyValue(t *testing.T) {
+	queries := db.New(pool)
+	handler := NewPersonAttributesHandler(queries)
+
+	e := echo.New()
+	jsonBody := `{"value":"   "}`
+	req := httptest.NewRequest(http.MethodPut, "/persons/123e4567-e89b-12d3-a456-426614174000/attributes/1", strings.NewReader(jsonBody))
+	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+	rec := httptest.NewRecorder()
+	c := e.NewContext(req, rec)
+	c.SetParamNames("personId", "attributeId")
+	c.SetParamValues("123e4567-e89b-12d3-a456-426614174000", "1")
+
+	err := handler.UpdateAttribute(c)
+
+	assert.NoError(t, err)
+	assert.Equal(t, http.StatusBadRequest, rec.Code)
+	assert.Contains(t, rec.Body.String(), "Value is required")
+}
+
+func TestUpdateAttribute_WithVersionOptimisticLocking(t *testing.T) {
+	ctx := context.Background()
+	err := testdb.TruncateTables(ctx, pool)
+	assert.NoError(t, err)
+
+	// Create a test person with an attribute
+	personID, err := createTestPerson(ctx, "test-client-version-1")
+	assert.NoError(t, err)
+
+	attrID, err := createTestAttribute(ctx, personID, "email", "old@example.com")
+	assert.NoError(t, err)
+
+	queries := db.New(pool)
+	handler := NewPersonAttributesHandler(queries)
+
+	// Get the current version
+	var currentVersion int64
+	err = pool.QueryRow(ctx, "SELECT version FROM person_attributes WHERE id = $1", attrID).Scan(&currentVersion)
+	assert.NoError(t, err)
+
+	e := echo.New()
+	jsonBody := fmt.Sprintf(`{"value":"updated@example.com","version":%d}`, currentVersion)
+	req := httptest.NewRequest(http.MethodPut, fmt.Sprintf("/persons/%s/attributes/%d", personID, attrID), strings.NewReader(jsonBody))
+	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+	rec := httptest.NewRecorder()
+	c := e.NewContext(req, rec)
+	c.SetParamNames("personId", "attributeId")
+	c.SetParamValues(personID, fmt.Sprintf("%d", attrID))
+
+	err = handler.UpdateAttribute(c)
+
+	assert.NoError(t, err)
+	assert.Equal(t, http.StatusOK, rec.Code)
+	assert.Contains(t, rec.Body.String(), "updated@example.com")
+}
+
+func TestUpdateAttribute_VersionConflict(t *testing.T) {
+	ctx := context.Background()
+	err := testdb.TruncateTables(ctx, pool)
+	assert.NoError(t, err)
+
+	// Create a test person with an attribute
+	personID, err := createTestPerson(ctx, "test-client-version-2")
+	assert.NoError(t, err)
+
+	attrID, err := createTestAttribute(ctx, personID, "email", "old@example.com")
+	assert.NoError(t, err)
+
+	queries := db.New(pool)
+	handler := NewPersonAttributesHandler(queries)
+
+	// Use a wrong version to trigger conflict
+	wrongVersion := int64(999)
+
+	e := echo.New()
+	jsonBody := fmt.Sprintf(`{"value":"updated@example.com","version":%d}`, wrongVersion)
+	req := httptest.NewRequest(http.MethodPut, fmt.Sprintf("/persons/%s/attributes/%d", personID, attrID), strings.NewReader(jsonBody))
+	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+	rec := httptest.NewRecorder()
+	c := e.NewContext(req, rec)
+	c.SetParamNames("personId", "attributeId")
+	c.SetParamValues(personID, fmt.Sprintf("%d", attrID))
+
+	err = handler.UpdateAttribute(c)
+
+	assert.NoError(t, err)
+	assert.Equal(t, http.StatusConflict, rec.Code)
+	assert.Contains(t, rec.Body.String(), "Version conflict")
 }

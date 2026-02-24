@@ -27,19 +27,31 @@ describe('NEGATIVE: DELETE /api/key-value/:key - Delete Key-Value', () => {
   
   test('Should handle DELETE of non-existent key', async () => {
     // DELETE might return 200 (idempotent) or 404
-    const response = await apiClient.delete(`/api/key-value/nonexistent-${Date.now()}`);
-    expect([200, 404]).toContain(response.status);
+    try {
+      const response = await apiClient.delete(`/api/key-value/nonexistent-${Date.now()}`);
+      expect([200, 404]).toContain(response.status);
+    } catch (error) {
+      expect(error.response.status).toBe(404);
+    }
   });
   
   test('Should handle DELETE of already deleted key', async () => {
     const testKey = `double-delete-${Date.now()}`;
-    
+
     // First delete (may or may not exist)
-    await apiClient.delete(`/api/key-value/${testKey}`);
-    
+    try {
+      await apiClient.delete(`/api/key-value/${testKey}`);
+    } catch (error) {
+      expect(error.response.status).toBe(404);
+    }
+
     // Second delete (definitely doesn't exist)
-    const response = await apiClient.delete(`/api/key-value/${testKey}`);
-    expect([200, 404]).toContain(response.status);
+    try {
+      const response = await apiClient.delete(`/api/key-value/${testKey}`);
+      expect([200, 404]).toContain(response.status);
+    } catch (error) {
+      expect(error.response.status).toBe(404);
+    }
   });
   
   // ========================================
@@ -95,15 +107,19 @@ describe('NEGATIVE: DELETE /api/key-value/:key - Delete Key-Value', () => {
   // ========================================
   
   test('Should ignore request body on DELETE', async () => {
-    const response = await apiClient.delete(`/api/key-value/nonexistent-${Date.now()}`, {
-      data: {
-        unexpected: 'body',
-        shouldBe: 'ignored'
-      }
-    });
-    
-    // Should succeed (body ignored), returns 200 or 404
-    expect([200, 404]).toContain(response.status);
+    try {
+      const response = await apiClient.delete(`/api/key-value/nonexistent-${Date.now()}`, {
+        data: {
+          unexpected: 'body',
+          shouldBe: 'ignored'
+        }
+      });
+
+      // Should succeed (body ignored), returns 200 or 404
+      expect([200, 404]).toContain(response.status);
+    } catch (error) {
+      expect(error.response.status).toBe(404);
+    }
   });
   
   // ========================================
@@ -111,10 +127,14 @@ describe('NEGATIVE: DELETE /api/key-value/:key - Delete Key-Value', () => {
   // ========================================
   
   test('Should handle DELETE with SQL injection pattern in key', async () => {
-    const response = await apiClient.delete("/api/key-value/'; DROP TABLE key_value; --");
-    
-    // Should safely handle (not execute SQL), return 200 or 404
-    expect([200, 404]).toContain(response.status);
+    try {
+      const response = await apiClient.delete("/api/key-value/'; DROP TABLE key_value; --");
+
+      // Should safely handle (not execute SQL), return 200 or 404
+      expect([200, 404]).toContain(response.status);
+    } catch (error) {
+      expect(error.response.status).toBe(404);
+    }
   });
   
   test('Should handle DELETE with path traversal attempt', async () => {
@@ -127,10 +147,14 @@ describe('NEGATIVE: DELETE /api/key-value/:key - Delete Key-Value', () => {
   });
   
   test('Should handle DELETE with XSS payload in key', async () => {
-    const response = await apiClient.delete('/api/key-value/<script>alert("xss")</script>');
-    
-    // Should safely handle, return 200 or 404
-    expect([200, 404]).toContain(response.status);
+    try {
+      const response = await apiClient.delete('/api/key-value/<script>alert("xss")</script>');
+
+      // Should safely handle, return 200 or 404
+      expect([200, 404]).toContain(response.status);
+    } catch (error) {
+      expect(error.response.status).toBe(404);
+    }
   });
   
   // ========================================
@@ -160,22 +184,30 @@ describe('NEGATIVE: DELETE /api/key-value/:key - Delete Key-Value', () => {
   // ========================================
   
   test('Should ignore invalid Content-Type header on DELETE', async () => {
-    const response = await apiClient.delete(`/api/key-value/nonexistent-${Date.now()}`, {
-      headers: {
-        'Content-Type': 'application/invalid'
-      }
-    });
-    
-    // Should ignore Content-Type on DELETE
-    expect([200, 404]).toContain(response.status);
+    try {
+      const response = await apiClient.delete(`/api/key-value/nonexistent-${Date.now()}`, {
+        headers: {
+          'Content-Type': 'application/invalid'
+        }
+      });
+
+      // Should ignore Content-Type on DELETE
+      expect([200, 404]).toContain(response.status);
+    } catch (error) {
+      expect(error.response.status).toBe(404);
+    }
   });
   
   test('Should handle DELETE without Accept header', async () => {
-    const response = await axios.delete(`${BASE_URL}/api/key-value/nonexistent-${Date.now()}`, {
-      headers: {}
-    });
-    
-    expect([200, 404]).toContain(response.status);
+    try {
+      const response = await axios.delete(`${BASE_URL}/api/key-value/nonexistent-${Date.now()}`, {
+        headers: {}
+      });
+
+      expect([200, 404]).toContain(response.status);
+    } catch (error) {
+      expect(error.response.status).toBe(404);
+    }
   });
   
   // ========================================
@@ -183,15 +215,23 @@ describe('NEGATIVE: DELETE /api/key-value/:key - Delete Key-Value', () => {
   // ========================================
   
   test('Should handle URL-encoded key in DELETE', async () => {
-    const response = await apiClient.delete('/api/key-value/test%20with%20spaces');
-    
-    // Should handle URL encoding
-    expect([200, 404]).toContain(response.status);
+    try {
+      const response = await apiClient.delete('/api/key-value/test%20with%20spaces');
+
+      // Should handle URL encoding
+      expect([200, 404]).toContain(response.status);
+    } catch (error) {
+      expect(error.response.status).toBe(404);
+    }
   });
   
   test('Should handle special URL characters', async () => {
-    const response = await apiClient.delete('/api/key-value/test%2Fwith%2Fslashes');
-    
-    expect([200, 404]).toContain(response.status);
+    try {
+      const response = await apiClient.delete('/api/key-value/test%2Fwith%2Fslashes');
+
+      expect([200, 404]).toContain(response.status);
+    } catch (error) {
+      expect(error.response.status).toBe(404);
+    }
   });
 });

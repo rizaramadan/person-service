@@ -67,7 +67,7 @@ describe('NEGATIVE: PUT /persons/:personId/attributes/:attributeId', () => {
     
     try {
       await clientWithoutAuth.put(
-        `/persons/${testPersonId}/attributes/660e8400-e29b-41d4-a716-446655440000`,
+        `/persons/${testPersonId}/attributes/999999`,
         { value: 'new-value' }
       );
       fail('Should have thrown 401');
@@ -87,7 +87,7 @@ describe('NEGATIVE: PUT /persons/:personId/attributes/:attributeId', () => {
     
     try {
       await clientWithInvalidKey.put(
-        `/persons/${testPersonId}/attributes/660e8400-e29b-41d4-a716-446655440000`,
+        `/persons/${testPersonId}/attributes/999999`,
         { value: 'new-value' }
       );
       fail('Should have thrown 401');
@@ -103,7 +103,7 @@ describe('NEGATIVE: PUT /persons/:personId/attributes/:attributeId', () => {
   test('Should return 404 for non-existent personId', async () => {
     try {
       await apiClient.put(
-        '/persons/00000000-0000-0000-0000-000000000000/attributes/660e8400-e29b-41d4-a716-446655440000',
+        '/persons/00000000-0000-0000-0000-000000000000/attributes/999999',
         { value: 'new-value' }
       );
       fail('Should have thrown 404');
@@ -115,7 +115,7 @@ describe('NEGATIVE: PUT /persons/:personId/attributes/:attributeId', () => {
   test('Should return 404 for non-existent attributeId', async () => {
     try {
       await apiClient.put(
-        `/persons/${testPersonId}/attributes/00000000-0000-0000-0000-000000000000`,
+        `/persons/${testPersonId}/attributes/999999`,
         { value: 'new-value' }
       );
       fail('Should have thrown 404');
@@ -131,7 +131,7 @@ describe('NEGATIVE: PUT /persons/:personId/attributes/:attributeId', () => {
   test('Should reject invalid UUID format for personId', async () => {
     try {
       await apiClient.put(
-        '/persons/invalid-uuid/attributes/660e8400-e29b-41d4-a716-446655440000',
+        '/persons/invalid-uuid/attributes/999999',
         { value: 'new-value' }
       );
       fail('Should have thrown error');
@@ -159,7 +159,7 @@ describe('NEGATIVE: PUT /persons/:personId/attributes/:attributeId', () => {
   test('Should reject request without body', async () => {
     try {
       await apiClient.put(
-        `/persons/${testPersonId}/attributes/660e8400-e29b-41d4-a716-446655440000`
+        `/persons/${testPersonId}/attributes/999999`
       );
       fail('Should have thrown 400');
     } catch (error) {
@@ -170,7 +170,7 @@ describe('NEGATIVE: PUT /persons/:personId/attributes/:attributeId', () => {
   test('Should reject empty body', async () => {
     try {
       await apiClient.put(
-        `/persons/${testPersonId}/attributes/660e8400-e29b-41d4-a716-446655440000`,
+        `/persons/${testPersonId}/attributes/999999`,
         {}
       );
       fail('Should have thrown 400');
@@ -182,7 +182,7 @@ describe('NEGATIVE: PUT /persons/:personId/attributes/:attributeId', () => {
   test('Should reject request without value field', async () => {
     try {
       await apiClient.put(
-        `/persons/${testPersonId}/attributes/660e8400-e29b-41d4-a716-446655440000`,
+        `/persons/${testPersonId}/attributes/999999`,
         { notValue: 'something' }
       );
       fail('Should have thrown 400');
@@ -198,7 +198,7 @@ describe('NEGATIVE: PUT /persons/:personId/attributes/:attributeId', () => {
   test('Should reject empty string as value', async () => {
     try {
       await apiClient.put(
-        `/persons/${testPersonId}/attributes/660e8400-e29b-41d4-a716-446655440000`,
+        `/persons/${testPersonId}/attributes/999999`,
         { value: '' }
       );
       fail('Should have thrown 400');
@@ -210,7 +210,7 @@ describe('NEGATIVE: PUT /persons/:personId/attributes/:attributeId', () => {
   test('Should reject null as value', async () => {
     try {
       await apiClient.put(
-        `/persons/${testPersonId}/attributes/660e8400-e29b-41d4-a716-446655440000`,
+        `/persons/${testPersonId}/attributes/999999`,
         { value: null }
       );
       fail('Should have thrown 400');
@@ -222,7 +222,7 @@ describe('NEGATIVE: PUT /persons/:personId/attributes/:attributeId', () => {
   test('Should reject whitespace-only value', async () => {
     try {
       await apiClient.put(
-        `/persons/${testPersonId}/attributes/660e8400-e29b-41d4-a716-446655440000`,
+        `/persons/${testPersonId}/attributes/999999`,
         { value: '   ' }
       );
       fail('Should have thrown 400');
@@ -238,7 +238,7 @@ describe('NEGATIVE: PUT /persons/:personId/attributes/:attributeId', () => {
   test('Should reject number as value', async () => {
     try {
       await apiClient.put(
-        `/persons/${testPersonId}/attributes/660e8400-e29b-41d4-a716-446655440000`,
+        `/persons/${testPersonId}/attributes/999999`,
         { value: 12345 }
       );
       fail('Should have thrown 400');
@@ -250,7 +250,7 @@ describe('NEGATIVE: PUT /persons/:personId/attributes/:attributeId', () => {
   test('Should reject object as value', async () => {
     try {
       await apiClient.put(
-        `/persons/${testPersonId}/attributes/660e8400-e29b-41d4-a716-446655440000`,
+        `/persons/${testPersonId}/attributes/999999`,
         { value: { nested: 'object' } }
       );
       fail('Should have thrown 400');
@@ -262,7 +262,7 @@ describe('NEGATIVE: PUT /persons/:personId/attributes/:attributeId', () => {
   test('Should reject array as value', async () => {
     try {
       await apiClient.put(
-        `/persons/${testPersonId}/attributes/660e8400-e29b-41d4-a716-446655440000`,
+        `/persons/${testPersonId}/attributes/999999`,
         { value: ['array', 'value'] }
       );
       fail('Should have thrown 400');
@@ -278,7 +278,7 @@ describe('NEGATIVE: PUT /persons/:personId/attributes/:attributeId', () => {
   test('Should reject invalid JSON', async () => {
     try {
       await axios.put(
-        `${BASE_URL}/persons/${testPersonId}/attributes/660e8400-e29b-41d4-a716-446655440000`,
+        `${BASE_URL}/persons/${testPersonId}/attributes/999999`,
         'invalid json string',
         {
           headers: {
@@ -296,7 +296,7 @@ describe('NEGATIVE: PUT /persons/:personId/attributes/:attributeId', () => {
   test('Should handle wrong Content-Type', async () => {
     try {
       await axios.put(
-        `${BASE_URL}/persons/${testPersonId}/attributes/660e8400-e29b-41d4-a716-446655440000`,
+        `${BASE_URL}/persons/${testPersonId}/attributes/999999`,
         { value: 'test' },
         {
           headers: {
@@ -322,7 +322,7 @@ describe('NEGATIVE: PUT /persons/:personId/attributes/:attributeId', () => {
     
     try {
       await apiClient.put(
-        `/persons/${testPersonId}/attributes/660e8400-e29b-41d4-a716-446655440000`,
+        `/persons/${testPersonId}/attributes/999999`,
         { value: longValue }
       );
       // If accepted, it's questionable
@@ -338,7 +338,7 @@ describe('NEGATIVE: PUT /persons/:personId/attributes/:attributeId', () => {
   test('Should reject POST method on PUT endpoint', async () => {
     try {
       await apiClient.post(
-        `/persons/${testPersonId}/attributes/660e8400-e29b-41d4-a716-446655440000`,
+        `/persons/${testPersonId}/attributes/999999`,
         { value: 'test' }
       );
       fail('Should have thrown error');
@@ -350,7 +350,7 @@ describe('NEGATIVE: PUT /persons/:personId/attributes/:attributeId', () => {
   test('Should reject PATCH method', async () => {
     try {
       await apiClient.patch(
-        `/persons/${testPersonId}/attributes/660e8400-e29b-41d4-a716-446655440000`,
+        `/persons/${testPersonId}/attributes/999999`,
         { value: 'test' }
       );
       fail('Should have thrown error');

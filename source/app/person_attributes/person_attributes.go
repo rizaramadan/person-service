@@ -9,6 +9,7 @@ import (
 	db "person-service/internal/db/generated"
 	"person-service/logging"
 	"strconv"
+	"strings"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -31,16 +32,17 @@ type CreateAttributeRequest struct {
 
 // UpdateAttributeRequest represents the request body for updating an attribute
 type UpdateAttributeRequest struct {
-	Key   string `json:"key"`
-	Value string `json:"value"`
-	Meta  *Meta  `json:"meta"`
+	Key     string `json:"key"`
+	Value   string `json:"value"`
+	Version *int64 `json:"version"`
+	Meta    *Meta  `json:"meta"`
 }
 
 // PersonAttributesHandler handles person attributes operations
 type PersonAttributesHandler struct {
 	queries       *db.Queries
 	encryptionKey string
-	keyVersion    int32
+	keyVersion    int64
 }
 
 // NewPersonAttributesHandler creates a new instance of PersonAttributesHandler
@@ -81,7 +83,7 @@ func (h *PersonAttributesHandler) CreateAttribute(c echo.Context) error {
 	}
 
 	// Validate required fields
-	if req.Key == "" {
+	if req.Key == "" || strings.TrimSpace(req.Key) == "" {
 		return c.JSON(http.StatusBadRequest, errs.ErrorResponse{
 			Message:   "Key is required",
 			ErrorCode: errs.ErrMissingRequiredFieldKey,
@@ -92,6 +94,14 @@ func (h *PersonAttributesHandler) CreateAttribute(c echo.Context) error {
 	if req.Meta == nil {
 		return c.JSON(http.StatusBadRequest, errs.ErrorResponse{
 			Message:   "Missing required field \"meta\"",
+			ErrorCode: errs.ErrMissingRequiredFieldMeta,
+		})
+	}
+
+	// Validate meta has required fields (traceId is optional - if empty, no audit log is created)
+	if req.Meta.Caller == "" || req.Meta.Reason == "" {
+		return c.JSON(http.StatusBadRequest, errs.ErrorResponse{
+			Message:   "Meta fields (caller, reason) are required",
 			ErrorCode: errs.ErrMissingRequiredFieldMeta,
 		})
 	}
@@ -139,7 +149,7 @@ func (h *PersonAttributesHandler) CreateAttribute(c echo.Context) error {
 
 		_, logErr := h.queries.InsertRequestLog(ctx, db.InsertRequestLogParams{
 			TraceID:               req.Meta.TraceID,
-			Caller:                req.Meta.Caller,
+			CallerInfo:                req.Meta.Caller,
 			Reason:                req.Meta.Reason,
 			EncryptedRequestBody:  requestBody,
 			EncryptedResponseBody: responseBody,
@@ -168,9 +178,10 @@ func (h *PersonAttributesHandler) CreateAttribute(c echo.Context) error {
 
 	// Build response
 	response := map[string]interface{}{
-		"id":    attribute.ID,
-		"key":   attribute.AttributeKey,
-		"value": string(attribute.AttributeValue),
+		"id":      attribute.ID,
+		"key":     attribute.AttributeKey,
+		"value":   string(attribute.AttributeValue),
+		"version": attribute.Version,
 	}
 
 	if attribute.CreatedAt.Valid {
@@ -234,9 +245,10 @@ func (h *PersonAttributesHandler) GetAllAttributes(c echo.Context) error {
 	response := make([]map[string]interface{}, 0, len(attributes))
 	for _, attr := range attributes {
 		item := map[string]interface{}{
-			"id":    attr.ID,
-			"key":   attr.AttributeKey,
-			"value": string(attr.AttributeValue),
+			"id":      attr.ID,
+			"key":     attr.AttributeKey,
+			"value":   string(attr.AttributeValue),
+			"version": attr.Version,
 		}
 		if attr.CreatedAt.Valid {
 			item["createdAt"] = attr.CreatedAt.Time
@@ -265,7 +277,7 @@ func (h *PersonAttributesHandler) GetAttribute(c echo.Context) error {
 
 	// Parse attribute ID from path
 	attributeIDStr := c.Param("attributeId")
-	attributeID, err := strconv.ParseInt(attributeIDStr, 10, 32)
+	attributeID, err := strconv.ParseInt(attributeIDStr, 10, 64)
 	if err != nil {
 		return c.JSON(http.StatusBadRequest, errs.ErrorResponse{
 			Message:   "Invalid attribute ID format",
@@ -307,7 +319,7 @@ func (h *PersonAttributesHandler) GetAttribute(c echo.Context) error {
 	// Find the attribute with matching ID
 	var foundAttr *db.GetAllPersonAttributesRow
 	for _, attr := range attributes {
-		if attr.ID == int32(attributeID) {
+		if attr.ID == attributeID {
 			foundAttr = &attr
 			break
 		}
@@ -322,9 +334,10 @@ func (h *PersonAttributesHandler) GetAttribute(c echo.Context) error {
 
 	// Build response
 	response := map[string]interface{}{
-		"id":    foundAttr.ID,
-		"key":   foundAttr.AttributeKey,
-		"value": string(foundAttr.AttributeValue),
+		"id":      foundAttr.ID,
+		"key":     foundAttr.AttributeKey,
+		"value":   string(foundAttr.AttributeValue),
+		"version": foundAttr.Version,
 	}
 	if foundAttr.CreatedAt.Valid {
 		response["createdAt"] = foundAttr.CreatedAt.Time
@@ -351,7 +364,7 @@ func (h *PersonAttributesHandler) UpdateAttribute(c echo.Context) error {
 
 	// Parse attribute ID from path
 	attributeIDStr := c.Param("attributeId")
-	attributeID, err := strconv.ParseInt(attributeIDStr, 10, 32)
+	attributeID, err := strconv.ParseInt(attributeIDStr, 10, 64)
 	if err != nil {
 		return c.JSON(http.StatusBadRequest, errs.ErrorResponse{
 			Message:   "Invalid attribute ID format",
@@ -365,6 +378,14 @@ func (h *PersonAttributesHandler) UpdateAttribute(c echo.Context) error {
 		return c.JSON(http.StatusBadRequest, errs.ErrorResponse{
 			Message:   "Invalid request body",
 			ErrorCode: errs.ErrInvalidRequestBody,
+		})
+	}
+
+	// Validate value is provided and not empty/whitespace
+	if strings.TrimSpace(req.Value) == "" {
+		return c.JSON(http.StatusBadRequest, errs.ErrorResponse{
+			Message:   "Value is required",
+			ErrorCode: errs.ErrMissingRequiredFieldValue,
 		})
 	}
 
@@ -386,7 +407,7 @@ func (h *PersonAttributesHandler) UpdateAttribute(c echo.Context) error {
 		})
 	}
 
-	// Get all attributes and find the one with matching ID to get the key
+	// Get all attributes and find the one with matching ID to get the key and current version
 	attributes, err := h.queries.GetAllPersonAttributes(ctx, db.GetAllPersonAttributesParams{
 		PersonID: personID,
 		EncKey:   h.encryptionKey,
@@ -400,17 +421,15 @@ func (h *PersonAttributesHandler) UpdateAttribute(c echo.Context) error {
 	}
 
 	// Find the attribute with matching ID
-	var existingKey string
-	found := false
+	var existingAttr *db.GetAllPersonAttributesRow
 	for _, attr := range attributes {
-		if attr.ID == int32(attributeID) {
-			existingKey = attr.AttributeKey
-			found = true
+		if attr.ID == attributeID {
+			existingAttr = &attr
 			break
 		}
 	}
 
-	if !found {
+	if existingAttr == nil {
 		return c.JSON(http.StatusNotFound, errs.ErrorResponse{
 			Message:   "Attribute not found",
 			ErrorCode: errs.ErrAttributeNotFound,
@@ -418,16 +437,16 @@ func (h *PersonAttributesHandler) UpdateAttribute(c echo.Context) error {
 	}
 
 	// Determine which key to use: if new key is provided, use it; otherwise use existing key
-	keyToUse := existingKey
+	keyToUse := existingAttr.AttributeKey
 	if req.Key != "" {
 		keyToUse = req.Key
 	}
 
 	// If the key changed, we need to delete the old one first
-	if req.Key != "" && req.Key != existingKey {
+	if req.Key != "" && req.Key != existingAttr.AttributeKey {
 		err = h.queries.DeletePersonAttribute(ctx, db.DeletePersonAttributeParams{
 			PersonID:     personID,
-			AttributeKey: existingKey,
+			AttributeKey: existingAttr.AttributeKey,
 		})
 		if err != nil {
 			return c.JSON(http.StatusInternalServerError, errs.ErrorResponse{
@@ -435,16 +454,41 @@ func (h *PersonAttributesHandler) UpdateAttribute(c echo.Context) error {
 				ErrorCode: errs.ErrFailedUpdateAttributeKey,
 			})
 		}
-	}
 
-	// Update the attribute (or create with new key)
-	_, err = h.queries.CreateOrUpdatePersonAttribute(ctx, db.CreateOrUpdatePersonAttributeParams{
-		PersonID:       personID,
-		AttributeKey:   keyToUse,
-		AttributeValue: req.Value,
-		EncKey:         h.encryptionKey,
-		KeyVersion:     h.keyVersion,
-	})
+		// Key changed: create new attribute (no version check since it's a new key)
+		_, err = h.queries.CreateOrUpdatePersonAttribute(ctx, db.CreateOrUpdatePersonAttributeParams{
+			PersonID:       personID,
+			AttributeKey:   keyToUse,
+			AttributeValue: req.Value,
+			EncKey:         h.encryptionKey,
+			KeyVersion:     h.keyVersion,
+		})
+	} else if req.Version != nil {
+		// Version provided: use optimistic locking
+		_, err = h.queries.UpdatePersonAttributeWithVersion(ctx, db.UpdatePersonAttributeWithVersionParams{
+			PersonID:        personID,
+			AttributeKey:    keyToUse,
+			AttributeValue:  req.Value,
+			EncKey:          h.encryptionKey,
+			KeyVersion:      h.keyVersion,
+			ExpectedVersion: *req.Version,
+		})
+		if errors.Is(err, pgx.ErrNoRows) {
+			return c.JSON(http.StatusConflict, errs.ErrorResponse{
+				Message:   "Version conflict: attribute has been modified by another request",
+				ErrorCode: errs.ErrVersionConflict,
+			})
+		}
+	} else {
+		// No version provided: update without version check (backward compatible)
+		_, err = h.queries.CreateOrUpdatePersonAttribute(ctx, db.CreateOrUpdatePersonAttributeParams{
+			PersonID:       personID,
+			AttributeKey:   keyToUse,
+			AttributeValue: req.Value,
+			EncKey:         h.encryptionKey,
+			KeyVersion:     h.keyVersion,
+		})
+	}
 
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, errs.ErrorResponse{
@@ -469,9 +513,10 @@ func (h *PersonAttributesHandler) UpdateAttribute(c echo.Context) error {
 
 	// Build response
 	response := map[string]interface{}{
-		"id":    attribute.ID,
-		"key":   attribute.AttributeKey,
-		"value": string(attribute.AttributeValue),
+		"id":      attribute.ID,
+		"key":     attribute.AttributeKey,
+		"value":   string(attribute.AttributeValue),
+		"version": attribute.Version,
 	}
 	if attribute.CreatedAt.Valid {
 		response["createdAt"] = attribute.CreatedAt.Time
@@ -498,7 +543,7 @@ func (h *PersonAttributesHandler) DeleteAttribute(c echo.Context) error {
 
 	// Parse attribute ID from path
 	attributeIDStr := c.Param("attributeId")
-	attributeID, err := strconv.ParseInt(attributeIDStr, 10, 32)
+	attributeID, err := strconv.ParseInt(attributeIDStr, 10, 64)
 	if err != nil {
 		return c.JSON(http.StatusBadRequest, errs.ErrorResponse{
 			Message:   "Invalid attribute ID format",
@@ -541,7 +586,7 @@ func (h *PersonAttributesHandler) DeleteAttribute(c echo.Context) error {
 	var keyToDelete string
 	found := false
 	for _, attr := range attributes {
-		if attr.ID == int32(attributeID) {
+		if attr.ID == attributeID {
 			keyToDelete = attr.AttributeKey
 			found = true
 			break
