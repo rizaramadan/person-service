@@ -17,7 +17,7 @@ class CustomReporter {
   }
 
   onRunComplete(contexts, results) {
-    const outputPath = path.join(__dirname, 'test-results.json');
+    const outputPath = path.join(__dirname, '_archive', 'artifacts', 'test-results.json');
     const seen = new WeakSet();
     const replacer = (key, value) => {
       if (typeof value === 'object' && value !== null) {
@@ -28,10 +28,11 @@ class CustomReporter {
       return value;
     };
     try {
+      fs.mkdirSync(path.dirname(outputPath), { recursive: true });
       fs.writeFileSync(outputPath, JSON.stringify(results, replacer, 2), 'utf8');
-      console.log('\n📊 Test results saved to: test-results.json');
+      console.log('\n📊 Test results saved to: _archive/artifacts/test-results.json');
     } catch (err) {
-      console.warn('\n⚠️ Could not save test-results.json:', err.message);
+      console.warn('\n⚠️ Could not save _archive/artifacts/test-results.json:', err.message);
     }
   }
 }

@@ -13,7 +13,8 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 // Default to reading Jest results
-const resultsFile = process.argv[2] || path.join(__dirname, 'test-results.json');
+const resultsFile =
+  process.argv[2] || path.join(__dirname, '_archive', 'artifacts', 'test-results.json');
 
 console.log('📊 Generating Test Report...\n');
 
@@ -623,8 +624,8 @@ const htmlContent = `<!DOCTYPE html>
             </div>
             <p style="margin-top: 20px; opacity: 0.8;">
                 For detailed information:<br>
-                📄 <code>Test/COMPLETE_TESTING_GUIDE.md</code><br>
-                🐛 <code>Test/API_Tests/specification_tests/BUG_REPORT.md</code>
+                📄 <code>Test/_archive/extras/root_docs/COMPLETE_TESTING_GUIDE.md</code><br>
+                🐛 <code>Test/_archive/extras/specification_tests/BUG_REPORT.md</code>
             </p>
         </footer>
     </div>
@@ -639,14 +640,15 @@ const htmlContent = `<!DOCTYPE html>
 </html>`;
 
 // Write HTML file
-const outputPath = path.join(__dirname, 'TESTING_REPORT_LATEST.html');
+const outputPath = path.join(__dirname, '_archive', 'artifacts', 'TESTING_REPORT_LATEST.html');
+fs.mkdirSync(path.dirname(outputPath), { recursive: true });
 fs.writeFileSync(outputPath, htmlContent, 'utf8');
 
 console.log('✅ HTML Report Generated!');
 console.log(`   Location: ${outputPath}\n`);
 
 // Also create a JSON summary
-const summaryPath = path.join(__dirname, 'test-summary.json');
+const summaryPath = path.join(__dirname, '_archive', 'artifacts', 'test-summary.json');
 const summary = {
   generatedAt: new Date().toISOString(),
   statistics: stats,

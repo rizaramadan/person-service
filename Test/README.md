@@ -60,7 +60,7 @@ npm run test:simple
 - ✅ Authentication (Bearer token)
 - ✅ HTTP request/response
 
-**See:** [TEST_RESULTS.md](./TEST_RESULTS.md) for details
+**See:** [TEST_RESULTS.md](./_archive/extras/root_docs/TEST_RESULTS.md) (arsip) untuk detail lama
 
 ---
 
@@ -92,19 +92,20 @@ npm run test:simple
 
 ### Getting Started
 
-- **[QUICK_START_INDONESIA.md](./QUICK_START_INDONESIA.md)** - Panduan cepat 5 menit (Bahasa Indonesia)
-- **[HOW_TO_RUN_TESTS.md](./HOW_TO_RUN_TESTS.md)** - Complete guide untuk run tests
+- **[QUICK_START_INDONESIA.md](./_archive/extras/root_docs/QUICK_START_INDONESIA.md)** - Panduan cepat (Bahasa Indonesia)
+- **[HOW_TO_RUN_TESTS.md](./_archive/extras/root_docs/HOW_TO_RUN_TESTS.md)** - Panduan menjalankan tes
+- **[API_Tests/README.md](./API_Tests/README.md)** - Daftar skenario per endpoint
 
-### Test Details
+### Test Details (arsip)
 
-- **[TEST_RESULTS.md](./TEST_RESULTS.md)** - Latest test run results
-- **[DATABASE_VERIFICATION_GUIDE.md](./DATABASE_VERIFICATION_GUIDE.md)** - Database verification details
-- **[PERSON_SERVICE_TESTS_SUMMARY.md](./PERSON_SERVICE_TESTS_SUMMARY.md)** - Complete test coverage summary
+- **[TEST_RESULTS.md](./_archive/extras/root_docs/TEST_RESULTS.md)** - Hasil run terdokumentasi
+- **[DATABASE_VERIFICATION_GUIDE.md](./_archive/extras/root_docs/DATABASE_VERIFICATION_GUIDE.md)** - Verifikasi database
+- **[PERSON_SERVICE_TESTS_SUMMARY.md](./_archive/extras/root_docs/PERSON_SERVICE_TESTS_SUMMARY.md)** - Ringkasan cakupan
 
-### Gherkin Features
+### Spesifikasi Gherkin (API)
 
-- **[Gherkin_features/README.md](./Gherkin_features/README.md)** - Feature files documentation
-- **[Gherkin_features/*.feature](./Gherkin_features/)** - 8 feature files with 160+ scenarios
+- **`API_Tests/*.feature`** — skenario per endpoint (mis. `GET_health.feature`)
+- Indeks dokumen lama: [_archive/extras/root_docs/DOCUMENTATION_INDEX.md](./_archive/extras/root_docs/DOCUMENTATION_INDEX.md)
 
 ---
 
@@ -169,29 +170,16 @@ Located in `jest.config.js`:
 
 ```
 Test/
-├── .env                              # Environment configuration
-├── package.json                      # Dependencies & scripts
-├── jest.config.js                    # Jest configuration
-│
-├── README.md                         # This file
-├── HOW_TO_RUN_TESTS.md              # Complete guide
-├── QUICK_START_INDONESIA.md         # Quick start (ID)
-├── TEST_RESULTS.md                  # Latest results
-│
-├── Gherkin_features/                # Feature files
-│   ├── README.md
-│   ├── person_crud_operations.feature
-│   ├── person_attributes.feature
-│   ├── person_images.feature
-│   ├── person_pagination_filtering.feature
-│   ├── error_handling.feature
-│   ├── performance_security.feature
-│   ├── health_monitoring.feature
-│   └── database_verification.feature
-│
-└── steps/                           # Step definitions
-    ├── simple_api_test.steps.js    # Simple test (working)
-    └── database_verification.steps.js.example
+├── .env
+├── package.json
+├── jest.config.js
+├── README.md
+├── _archive/              # Bug reports, panduan lama, output laporan (lihat _archive/README.md)
+├── API_Tests/             # *.feature + tests/, negative_tests/, …
+├── steps/                 # simple_api_test.steps.js, *.test.js
+├── custom-reporter.js
+├── generate-report.js
+└── verify-db-connection.js
 ```
 
 ---
@@ -264,9 +252,9 @@ Time: X.XXXs
 ## 📞 Support
 
 For issues or questions:
-1. Check [HOW_TO_RUN_TESTS.md](./HOW_TO_RUN_TESTS.md)
-2. Review [TEST_RESULTS.md](./TEST_RESULTS.md)
-3. Check [DATABASE_VERIFICATION_GUIDE.md](./DATABASE_VERIFICATION_GUIDE.md)
+1. Check [HOW_TO_RUN_TESTS.md](./_archive/extras/root_docs/HOW_TO_RUN_TESTS.md)
+2. Review [TEST_RESULTS.md](./_archive/extras/root_docs/TEST_RESULTS.md)
+3. Check [DATABASE_VERIFICATION_GUIDE.md](./_archive/extras/root_docs/DATABASE_VERIFICATION_GUIDE.md)
 
 ---
 

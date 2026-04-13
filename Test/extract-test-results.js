@@ -1,6 +1,6 @@
 /**
  * Extract passed and failed test cases from test-results.json
- * Writes: Passed_testcase.md and Failed_testcase.md in Test/
+ * Writes: Passed_testcase.md and Failed_testcase.md in _archive/docs_status/
  */
 
 import fs from 'fs';
@@ -10,8 +10,8 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const resultsPath = path.join(__dirname, 'test-results.json');
-const statusDir = path.join(__dirname, 'Test status');
+const resultsPath = path.join(__dirname, '_archive', 'artifacts', 'test-results.json');
+const statusDir = path.join(__dirname, '_archive', 'docs_status');
 const passedPath = path.join(statusDir, 'Passed_testcase.md');
 const failedPath = path.join(statusDir, 'Failed_testcase.md');
 
@@ -72,5 +72,5 @@ if (!fs.existsSync(statusDir)) {
 fs.writeFileSync(passedPath, formatList(passed, 'Passed Test Cases', '✅'), 'utf8');
 fs.writeFileSync(failedPath, formatFailedList(failed), 'utf8');
 
-console.log(`✅ Written ${passed.length} passed tests to Test status/Passed_testcase.md`);
-console.log(`✅ Written ${failed.length} failed tests to Test status/Failed_testcase.md`);
+console.log(`✅ Written ${passed.length} passed tests to _archive/docs_status/Passed_testcase.md`);
+console.log(`✅ Written ${failed.length} failed tests to _archive/docs_status/Failed_testcase.md`);
